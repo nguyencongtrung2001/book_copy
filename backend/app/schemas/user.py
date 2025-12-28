@@ -4,8 +4,8 @@ from datetime import datetime
 
 class RegisterUserSchema(BaseModel):
     username: str
-    phone: Optional[str]
-    address: Optional[str]
+    phone: Optional[str] = None
+    address: Optional[str] = None
     email: EmailStr
     password: str = Field(..., min_length=6)
 
@@ -15,32 +15,50 @@ class RegisterUserSchema(BaseModel):
 class RegisterResponseSchema(BaseModel):
     id: str
     fullname: str
-    phone: Optional[str]
-    address: Optional[str]
+    phone: Optional[str] = None
+    address: Optional[str] = None
     email: EmailStr
-    created_at: Optional[datetime]
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-
 class LoginSchema(BaseModel):
-    phone:Optional[str]
-    password:str = Field(...,min_length=6)
+    phone: str  # Sử dụng phone để đăng nhập
+    password: str = Field(..., min_length=6)
 
-class TokenSchema(BaseModel):      # Mục đích: Trả về sau login thành công. Token dùng để xác thực các request sau (như xem profile).
-    """" Schema response khi đăng nhập thành công  """
-    access_token:str   # Chuỗi token dài (từ hàm create_access_token ở code trước).
-    token_type:str = "bearer" 
-    user:dict  # Một dict chứa info user (ví dụ: {"id": 1, "email": "...", "role": "user"}). Không phải schema riêng, linh hoạt.
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserInfoSchema(BaseModel):
+    """Thông tin user trong response login"""
+    id: str
+    fullname: str
+    email: EmailStr
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    role: str  # 'admin' hoặc 'customer'
+    created_at: Optional[str] = None  # ISO format string
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenSchema(BaseModel):
+    """Schema response khi đăng nhập thành công"""
+    access_token: str
+    token_type: str = "bearer"
+    user: dict  # Thông tin user
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserProfileSchema(BaseModel):
     id: str
     fullname: str
-    phone: Optional[str]
-    address: Optional[str]
+    phone: Optional[str] = None
+    address: Optional[str] = None
     email: EmailStr
-    created_at: Optional[datetime]
+    role: str
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

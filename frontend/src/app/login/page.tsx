@@ -2,15 +2,68 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
+import { loginUser, LoginData } from '@/api/auth';
 
 const LoginPage = () => {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const [formData, setFormData] = useState<LoginData>({
+    phone: '',
+    password: ''
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user types
+    if (error) setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Validate
+      if (!formData.phone || !formData.password) {
+        setError('Vui lòng nhập đầy đủ thông tin');
+        setIsLoading(false);
+        return;
+      }
+
+      // Call login API
+      const response = await loginUser(formData);
+      
+      // Redirect based on role
+      if (response.user.role === 'admin') {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Đã xảy ra lỗi không xác định');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="login-page-wrapper min-h-[85vh] flex flex-col justify-center items-center p-5 relative bg-[#f0fdf4] overflow-hidden">
       
-      {/* Background SVG Waves - Giữ nguyên style xanh lá đa lớp */}
+      {/* Background SVG Waves */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" className="absolute bottom-0 w-full">
           <path fill="#0F9D58" fillOpacity="0.1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
@@ -36,31 +89,50 @@ const LoginPage = () => {
           Đăng Nhập
         </h2>
 
-        <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form className="space-y-5" onSubmit={handleSubmit}>
           
           {/* Số điện thoại */}
           <div className="form-group relative">
-            <label className="block font-bold text-xs text-slate-600 mb-1.5 ml-1">Số điện thoại</label>
+            <label className="block font-bold text-xs text-slate-600 mb-1.5 ml-1">
+              Số điện thoại
+            </label>
             <input 
               type="tel" 
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
               placeholder="Nhập SĐT của bạn"
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#0F9D58] focus:ring-4 focus:ring-[#0F9D58]/10 transition-all"
+              disabled={isLoading}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#0F9D58] focus:ring-4 focus:ring-[#0F9D58]/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
           {/* Mật khẩu */}
           <div className="form-group relative">
-            <label className="block font-bold text-xs text-slate-600 mb-1.5 ml-1">Mật khẩu</label>
+            <label className="block font-bold text-xs text-slate-600 mb-1.5 ml-1">
+              Mật khẩu
+            </label>
             <div className="relative">
               <input 
-                type={showPassword ? "text" : "password"} 
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 placeholder="Nhập mật khẩu"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#0F9D58] focus:ring-4 focus:ring-[#0F9D58]/10 transition-all pr-11"
+                disabled={isLoading}
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#0F9D58] focus:ring-4 focus:ring-[#0F9D58]/10 transition-all pr-11 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0F9D58] transition-colors p-1"
+                disabled={isLoading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0F9D58] transition-colors p-1 disabled:opacity-50"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -69,10 +141,18 @@ const LoginPage = () => {
 
           {/* Nút đăng nhập */}
           <button 
-            type="button"
-            className="w-full py-3 mt-2 bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold rounded-full shadow-lg shadow-[#0F9D58]/20 transition-all transform hover:-translate-y-0.5 active:scale-95"
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 mt-2 bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold rounded-full shadow-lg shadow-[#0F9D58]/20 transition-all transform hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
           >
-            Đăng Nhập Ngay
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Đang đăng nhập...
+              </>
+            ) : (
+              'Đăng Nhập Ngay'
+            )}
           </button>
 
           {/* Link sang Đăng ký */}
