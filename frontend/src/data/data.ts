@@ -38,7 +38,7 @@ export const data = [
     id: 5,
     content: "Sách đa dạng, cập nhật nhiều đầu sách mới. Phù hợp cho sinh viên và người thích đọc sách như mình.",
     image: monsoon,
-    name: "Bùi Xuân Văn",
+    name: "Trần Gia Thái",
     work: "Sinh viên",
   },
   {
