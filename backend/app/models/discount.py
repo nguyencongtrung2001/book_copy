@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, U
 from datetime import datetime
 from .base import Base
 from sqlalchemy.orm import relationship
-class DiscountCode(Base):
+class Discount(Base):
     __tablename__ = "discounts"
     
     discount_id = Column(String(10), primary_key=True)
