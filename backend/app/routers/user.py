@@ -1,25 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert, update
-from uuid import uuid4
+from sqlalchemy import select
+from datetime import datetime
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_admin, require_customer
+from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.schemas.user import (
     RegisterUserSchema, 
     RegisterResponseSchema,
     LoginSchema,
-    TokenSchema,
-    UserProfileSchema,
-    UpdateProfileSchema
+    TokenSchema
 )
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post("/register", 
-    summary="Đăng ký người dùng mới", 
     response_model=RegisterResponseSchema,
     status_code=status.HTTP_201_CREATED
 )
@@ -30,48 +27,42 @@ async def register_user(
     """Đăng ký tài khoản mới"""
     # Kiểm tra email tồn tại
     stmt = select(User).where(User.email == user_data.email)
-    result = db.execute(stmt)
-    exist_user = result.scalar_one_or_none()
-
+    exist_user = db.execute(stmt).scalar_one_or_none()
     if exist_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email đã tồn tại"
         )
 
-    # Kiểm tra số điện thoại tồn tại
+    # Kiểm tra số điện thoại
     if user_data.phone:
         stmt = select(User).where(User.phone == user_data.phone)
-        result = db.execute(stmt)
-        exist_phone = result.scalar_one_or_none()
+        exist_phone = db.execute(stmt).scalar_one_or_none()
         if exist_phone:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Số điện thoại đã được sử dụng"
             )
 
-    # Tạo user mới - FIXED: Dùng full UUID
-    import uuid  # Thêm nếu chưa có
-    new_user_id = str(uuid.uuid4())  # Full UUID, an toàn hơn
+    # Tạo user mới
+    import uuid
+    new_user_id = str(uuid.uuid4())[:10]  # Rút ngắn cho đẹp
     hashed_pwd = get_password_hash(user_data.password)
 
-    stmt = insert(User).values(
+    new_user = User(
         user_id=new_user_id,
-        full_name=user_data.username,  # Giả sử schema có username
+        full_name=user_data.username,
         email=user_data.email,
         password=hashed_pwd,
         phone=user_data.phone,
         address=user_data.address,
-        role='customer'  # Mặc định là customer
+        role='customer',
+        created_at=datetime.utcnow()
     )
 
-    db.execute(stmt)
+    db.add(new_user)
     db.commit()
-
-    # Lấy user vừa tạo
-    stmt = select(User).where(User.user_id == new_user_id)
-    result = db.execute(stmt)
-    new_user = result.scalar_one()
+    db.refresh(new_user)  # Quan trọng!
 
     return {
         "id": new_user.user_id,
@@ -82,36 +73,26 @@ async def register_user(
         "created_at": new_user.created_at,
     }
 
-@router.post("/login", 
-    summary="Đăng nhập", 
-    response_model=TokenSchema
-)
+
+@router.post("/login", response_model=TokenSchema)
 async def login(
     login_data: LoginSchema,
     db: Session = Depends(get_db)
 ):
-    """Đăng nhập vào hệ thống - FIXED: Search by phone OR email"""
-    # Tìm user theo phone HOẶC email
+    """Đăng nhập"""
+    # Tìm user theo phone hoặc email
     stmt = select(User).where(
-        (User.phone == login_data.phone) | (User.email == login_data.email)  # Giả sử schema có email field
+        (User.phone == login_data.phone) | (User.email == login_data.phone)
     )
-    result = db.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = db.execute(stmt).scalar_one_or_none()
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Thông tin đăng nhập không đúng"  # Chung chung hơn
-        )
-
-    # Kiểm tra mật khẩu
-    if not verify_password(login_data.password, user.password):
+    if not user or not verify_password(login_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Thông tin đăng nhập không đúng"
         )
 
-    # Tạo access token với thông tin user
+    # Tạo token
     access_token = create_access_token(
         data={
             "user_id": user.user_id,
@@ -134,31 +115,21 @@ async def login(
         }
     }
 
-# ... (các hàm khác giữ nguyên)
 
-@router.get("/admin/users",
-    summary="[Admin] Lấy danh sách users",
-    dependencies=[Depends(require_admin)]
-)
+@router.get("/admin/users", dependencies=[Depends(require_admin)])
 async def get_all_users(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100
 ):
-    """Chỉ admin mới xem được danh sách user - FIXED: True total count"""
-    from sqlalchemy import func  # Thêm import
-    # Đếm total
-    total_stmt = select(func.count()).select_from(User)
-    total_result = db.execute(total_stmt)
-    total = total_result.scalar()
-
-    # Lấy users
-    stmt = select(User).offset(skip).limit(limit)
-    result = db.execute(stmt)
-    users = result.scalars().all()
+    """Admin xem danh sách users"""
+    from sqlalchemy import func
+    
+    total = db.execute(select(func.count()).select_from(User)).scalar()
+    users = db.execute(select(User).offset(skip).limit(limit)).scalars().all()
     
     return {
-        "total": total,  # True total
+        "total": total,
         "users": [
             {
                 "id": u.user_id,
