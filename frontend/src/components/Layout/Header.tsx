@@ -1,47 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from 'react'; // Bỏ useCallback vì không cần nữa
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { getCurrentUser, logoutUser, isAuthenticated } from '@/api/auth';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const pathname = usePathname();
-  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
-  
-  // Init state sync thay vì dùng effect
-  const [isLoggedIn] = useState(() => isAuthenticated()); // Đọc-only vì không thay đổi trong component này
-  const [userName] = useState(() => {
-    if (isAuthenticated()) {
-      const user = getCurrentUser();
-      return user?.fullname || '';
-    }
-    return '';
-  });
 
   // Giả lập số lượng giỏ hàng và thông báo
   const cartCount = 3; 
   const notificationCount = 2;
 
   useEffect(() => {
-    // Bỏ checkAuth() vì đã init sync
-
-    // Scroll handler (giữ nguyên)
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []); // Empty deps vì chỉ scroll
+  }, []);
 
   const handleLogout = () => {
-    logoutUser();
-    // Không cần set state ở đây vì AuthContext sẽ handle global state
-    // Nếu cần, reload page hoặc dùng context để update
-    router.push('/login');
+    if (confirm('Bạn có chắc muốn đăng xuất?')) {
+      logout();
+    }
   };
 
-  // Hàm kiểm tra active link (giữ nguyên)
   const isActive = (path: string) => 
     pathname === path 
       ? "bg-[#0d9488] text-white shadow-md" 
@@ -54,7 +39,7 @@ const Header = () => {
       <div className="container mx-auto px-4 md:px-10">
         <nav className="flex items-center justify-between">
           
-          {/* Logo (giữ nguyên) */}
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <i className="fas fa-book-open text-2xl text-[#0d9488]"></i>
             <h1 className="text-2xl font-extrabold text-[#0d9488] tracking-tighter font-quicksand m-0 leading-none">
@@ -62,7 +47,7 @@ const Header = () => {
             </h1>
           </Link>
 
-          {/* Desktop Menu (giữ nguyên, dùng isLoggedIn từ state init) */}
+          {/* Desktop Menu */}
           <div className="hidden xl:flex items-center space-x-1">
             <Link href="/" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/')}`}>
               Trang Chủ
@@ -82,16 +67,24 @@ const Header = () => {
               Liên hệ
             </Link>
 
-            {isLoggedIn && (
+            {isAuthenticated && (
               <Link href="/tai-khoan" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/tai-khoan')}`}>
                 Tài khoản
               </Link>
             )}
+
+            {/* Admin Dashboard Link */}
+            {isAuthenticated && user?.role === 'admin' && (
+              <Link href="/dashboard" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/dashboard')}`}>
+                <i className="fas fa-cog mr-2"></i>
+                Quản trị
+              </Link>
+            )}
           </div>
 
-          {/* Right Actions (giữ nguyên) */}
+          {/* Right Actions */}
           <div className="flex items-center space-x-4">
-            {isLoggedIn ? (
+            {isAuthenticated && user ? (
               <div className="flex items-center gap-4">
                 {/* Notification */}
                 <Link href="/thong-bao" className="relative group p-2">
@@ -103,9 +96,17 @@ const Header = () => {
                   )}
                 </Link>
 
-                <span className="hidden md:inline font-bold text-[#0d9488] font-quicksand">
-                  Hi, {userName}!
-                </span>
+                <div className="hidden md:flex items-center gap-2">
+                  <div className="w-8 h-8 bg-[#0d9488] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {user.fullname.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-[#0d9488] text-sm font-quicksand leading-none">
+                      {user.fullname}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  </div>
+                </div>
 
                 <button 
                   onClick={handleLogout}

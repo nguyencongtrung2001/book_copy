@@ -62,3 +62,12 @@ class UserProfileSchema(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UpdateProfileSchema(BaseModel):
+    """Schema để cập nhật profile"""
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)

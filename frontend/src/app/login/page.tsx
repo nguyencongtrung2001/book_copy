@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 import { loginUser, LoginData } from '@/api/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const LoginPage = () => {
   const router = useRouter();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,7 +25,6 @@ const LoginPage = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user types
     if (error) setError('');
   };
 
@@ -42,6 +43,9 @@ const LoginPage = () => {
 
       // Call login API
       const response = await loginUser(formData);
+      
+      // Update auth context
+      login(response.user);
       
       // Redirect based on role
       if (response.user.role === 'admin') {

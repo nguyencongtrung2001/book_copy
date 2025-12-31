@@ -1,23 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, update
 from uuid import uuid4
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.database import get_db
+from app.core.dependencies import get_current_user, require_admin, require_customer
 from app.models.user import User
 from app.schemas.user import (
     RegisterUserSchema, 
     RegisterResponseSchema,
     LoginSchema,
     TokenSchema,
-    UserProfileSchema
+    UserProfileSchema,
+    UpdateProfileSchema
 )
-from typing import Optional
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.post("/register", summary="Đăng ký người dùng mới", response_model=RegisterResponseSchema)
+@router.post("/register", 
+    summary="Đăng ký người dùng mới", 
+    response_model=RegisterResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
 async def register_user(
     user_data: RegisterUserSchema,
     db: Session = Depends(get_db)
@@ -77,7 +82,10 @@ async def register_user(
     }
 
 
-@router.post("/login", summary="Đăng nhập", response_model=TokenSchema)
+@router.post("/login", 
+    summary="Đăng nhập", 
+    response_model=TokenSchema
+)
 async def login(
     login_data: LoginSchema,
     db: Session = Depends(get_db)
@@ -125,11 +133,118 @@ async def login(
     }
 
 
-@router.get("/profile", summary="Lấy thông tin profile", response_model=UserProfileSchema)
+@router.get("/profile", 
+    summary="Lấy thông tin profile", 
+    response_model=UserProfileSchema
+)
 async def get_profile(
-    db: Session = Depends(get_db),
-    # current_user: User = Depends(get_current_user)  # Sẽ implement sau
+    current_user: User = Depends(get_current_user)
 ):
     """Lấy thông tin profile của user đang đăng nhập"""
-    # TODO: Implement get_current_user dependency
-    pass
+    return {
+        "id": current_user.user_id,
+        "fullname": current_user.full_name,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "address": current_user.address,
+        "role": current_user.role,
+        "created_at": current_user.created_at
+    }
+
+
+@router.put("/profile",
+    summary="Cập nhật thông tin profile",
+    response_model=UserProfileSchema
+)
+async def update_profile(
+    profile_data: UpdateProfileSchema,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cập nhật thông tin profile của user"""
+    update_data = profile_data.model_dump(exclude_unset=True)
+    
+    if update_data:
+        stmt = update(User).where(
+            User.user_id == current_user.user_id
+        ).values(**update_data)
+        db.execute(stmt)
+        db.commit()
+        
+        # Refresh user data
+        db.refresh(current_user)
+    
+    return {
+        "id": current_user.user_id,
+        "fullname": current_user.full_name,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "address": current_user.address,
+        "role": current_user.role,
+        "created_at": current_user.created_at
+    }
+
+
+@router.get("/me",
+    summary="Verify token và lấy thông tin user",
+    response_model=UserProfileSchema
+)
+async def get_me(
+    current_user: User = Depends(get_current_user)
+):
+    """Endpoint để verify token và lấy thông tin user"""
+    return {
+        "id": current_user.user_id,
+        "fullname": current_user.full_name,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "address": current_user.address,
+        "role": current_user.role,
+        "created_at": current_user.created_at
+    }
+
+
+# Example: Protected routes cho admin
+@router.get("/admin/users",
+    summary="[Admin] Lấy danh sách users",
+    dependencies=[Depends(require_admin)]
+)
+async def get_all_users(
+    db: Session = Depends(get_db),
+    skip: int = 0,
+    limit: int = 100
+):
+    """Chỉ admin mới xem được danh sách user"""
+    stmt = select(User).offset(skip).limit(limit)
+    result = db.execute(stmt)
+    users = result.scalars().all()
+    
+    return {
+        "total": len(users),
+        "users": [
+            {
+                "id": u.user_id,
+                "fullname": u.full_name,
+                "email": u.email,
+                "role": u.role,
+                "created_at": u.created_at
+            } for u in users
+        ]
+    }
+
+
+# Example: Protected routes cho customer
+@router.get("/customer/orders",
+    summary="[Customer] Lấy đơn hàng của tôi",
+    dependencies=[Depends(require_customer)]
+)
+async def get_my_orders(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Chỉ customer mới xem được đơn hàng của mình"""
+    # TODO: Implement logic lấy orders
+    return {
+        "user_id": current_user.user_id,
+        "orders": []
+    }
