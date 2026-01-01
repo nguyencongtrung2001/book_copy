@@ -39,6 +39,40 @@ const getImageUrl = (image: string | null) => {
   return `/books/${image}`;
 };
 
+/* ================== RELATED BOOK CARD COMPONENT ================== */
+const RelatedBookCard = ({ book }: { book: BookList }) => {
+  const [relatedImgError, setRelatedImgError] = useState(false);
+  const relatedImgSrc = relatedImgError ? "/books/default-book.png" : getImageUrl(book.cover_image_url);
+  
+  return (
+    <Link href={`/book/${book.book_id}`}>
+      <div className="bg-white rounded-2xl p-4 shadow hover:shadow-xl transition-all transform hover:-translate-y-1">
+        <div className="relative aspect-3/4 mb-4">
+          <Image
+            src={relatedImgSrc}
+            alt={book.title}
+            fill
+            className="object-contain"
+            onError={() => setRelatedImgError(true)}
+            unoptimized={relatedImgSrc.startsWith("http")}
+          />
+        </div>
+        <h4 className="font-bold text-sm line-clamp-2 mb-2 text-gray-800">
+          {book.title}
+        </h4>
+        <p className="text-[#0F9D58] font-bold text-lg">
+          {Number(book.price).toLocaleString("vi-VN")} đ
+        </p>
+        {book.stock_quantity === 0 && (
+          <span className="inline-block mt-2 text-xs text-red-500 font-semibold">
+            Hết hàng
+          </span>
+        )}
+      </div>
+    </Link>
+  );
+};
+
 /* ================== META COMPONENT ================== */
 const Meta = ({
   icon,
@@ -66,6 +100,7 @@ const BookDetailPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('cash');
+  const [imgError, setImgError] = useState(false);
 
   /* ================== LOAD DATA ================== */
   useEffect(() => {
@@ -110,7 +145,6 @@ const BookDetailPage = () => {
     e.preventDefault();
     if (!book || book.stock_quantity === 0) return;
     
-    // TODO: Implement actual cart logic
     console.log(`Adding ${quantity} of ${book.title} to cart`);
     console.log(`Payment method: ${paymentMethod}`);
     setShowModal(true);
@@ -162,6 +196,8 @@ const BookDetailPage = () => {
     );
   }
 
+  const imageSrc = imgError ? "/books/default-book.png" : getImageUrl(book.cover_image_url);
+
   /* ================== MAIN RENDER ================== */
   return (
     <>
@@ -191,17 +227,15 @@ const BookDetailPage = () => {
                     </div>
                   )}
                   <Image
-                    src={getImageUrl(book.cover_image_url)}
+                    src={imageSrc}
                     alt={book.title}
                     fill
                     priority
                     className={`object-contain rounded-2xl ${
                       book.stock_quantity === 0 ? "grayscale opacity-40" : ""
                     }`}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/books/default-book.png";
-                    }}
+                    onError={() => setImgError(true)}
+                    unoptimized={imageSrc.startsWith("http")}
                   />
                 </div>
               </div>
@@ -423,33 +457,7 @@ const BookDetailPage = () => {
 
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {relatedBooks.map((b) => (
-                  <Link key={b.book_id} href={`/book/${b.book_id}`}>
-                    <div className="bg-white rounded-2xl p-4 shadow hover:shadow-xl transition-all transform hover:-translate-y-1">
-                      <div className="relative aspect-3/4 mb-4">
-                        <Image
-                          src={getImageUrl(b.cover_image_url)}
-                          alt={b.title}
-                          fill
-                          className="object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "/books/default-book.png";
-                          }}
-                        />
-                      </div>
-                      <h4 className="font-bold text-sm line-clamp-2 mb-2 text-gray-800">
-                        {b.title}
-                      </h4>
-                      <p className="text-[#0F9D58] font-bold text-lg">
-                        {Number(b.price).toLocaleString("vi-VN")} đ
-                      </p>
-                      {b.stock_quantity === 0 && (
-                        <span className="inline-block mt-2 text-xs text-red-500 font-semibold">
-                          Hết hàng
-                        </span>
-                      )}
-                    </div>
-                  </Link>
+                  <RelatedBookCard key={b.book_id} book={b} />
                 ))}
               </div>
             </div>

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
@@ -13,6 +13,8 @@ interface BookProps {
 }
 
 const BookCard = ({ id, title, price, image, stock_quantity }: BookProps) => {
+  const [imgError, setImgError] = useState(false);
+
   // Xử lý đường dẫn ảnh
   const getImagePath = (imageName: string | null) => {
     if (!imageName) return "/books/default-book.png";
@@ -24,7 +26,7 @@ const BookCard = ({ id, title, price, image, stock_quantity }: BookProps) => {
     return `/books/${imageName}`;
   };
 
-  const imageSrc = getImagePath(image);
+  const imageSrc = imgError ? "/books/default-book.png" : getImagePath(image);
 
   return (
     <div className="bg-white rounded-2xl shadow hover:shadow-xl transition-all flex flex-col h-full">
@@ -50,11 +52,9 @@ const BookCard = ({ id, title, price, image, stock_quantity }: BookProps) => {
                 ? "grayscale opacity-40"
                 : "hover:scale-110"
             }`}
-            onError={(e) => {
-              // Fallback nếu ảnh lỗi
-              const target = e.target as HTMLImageElement;
-              target.src = "/books/default-book.png";
-            }}
+            onError={() => setImgError(true)}
+            priority={false}
+            unoptimized={imageSrc.startsWith("http")}
           />
         </Link>
       </div>

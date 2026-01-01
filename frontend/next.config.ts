@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
+    // Thêm domain localhost để test
+    domains: ['localhost', '127.0.0.1'],
   },
 };
 
