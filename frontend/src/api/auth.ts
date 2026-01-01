@@ -28,7 +28,7 @@ export interface LoginResponse {
 // Login function
 export async function loginUser(loginData: LoginData): Promise<LoginResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export async function verifyToken(): Promise<UserInfo | null> {
 
   try {
     // Lưu ý: Backend cần có endpoint /users/me để verify token
-    const response = await fetch(`${API_BASE_URL}/users/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

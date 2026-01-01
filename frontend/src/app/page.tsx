@@ -54,13 +54,14 @@ export default function HomePage() {
 ) : (
   books.map((book) => (
     <BookCard
-      key={book.book_id}
-      id={book.book_id}
-      title={book.title}
-      price={book.price}
-      image={book.cover_image_url}
-      stock_quantity={book.stock_quantity}
-    />
+  key={book.book_id}
+  id={book.book_id}
+  title={book.title}
+  price={book.price}
+  image={book.cover_image_url} // VD: "autumn.png"
+  stock_quantity={book.stock_quantity}
+/>
+
   ))
 )}
 

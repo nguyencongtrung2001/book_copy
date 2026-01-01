@@ -23,7 +23,7 @@ export interface RegisterResponse {
 // Register user function
 export async function registerUser(userData: RegisterUserData): Promise<RegisterResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/users/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

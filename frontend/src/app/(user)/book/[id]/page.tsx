@@ -1,254 +1,270 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { 
-  UserPen, 
-  Book, 
-  PackageOpen, 
-  Star, 
-  Minus, 
-  Plus, 
-  ShoppingCart, 
-  Ban, 
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useParams } from "next/navigation";
+import {
+  UserPen,
+  Book,
+  Star,
+  Minus,
+  Plus,
+  ShoppingCart,
   LibraryBig,
-  CheckCircle
-} from 'lucide-react';
-import Image from 'next/image';
+  CheckCircle,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 
+import Header from "@/components/Layout/Header";
+import Footer from "@/components/Layout/Footer";
+import {
+  fetchBookDetail,
+  fetchBookList,
+  BookDetail,
+  BookList,
+} from "@/api/book";
+
+/* ================== HELPER ================== */
+const getImageUrl = (image: string | null) => {
+  if (!image) return "/books/book_default.jpg";
+  if (image.startsWith("http")) return image;
+  return `/books/${image}`;
+};
+
+/* ================== PAGE ================== */
 const BookDetailPage = () => {
-  const book = {
-    maSach: "S001",
-    tenSach: "Lập trình hướng đối tượng với C++",
-    donGia: 150000,
-    hinh: "cpp-book.jpg",
-    soLuongTon: 15,
-    tacGia: "Nguyễn Văn A",
-    moTa: "Cuốn sách cung cấp kiến thức cơ bản về lập trình hướng đối tượng, các nguyên lý cơ bản và ứng dụng thực tế trong ngôn ngữ C++.",
-    tenTheLoai: "Công nghệ thông tin"
-  };
+  const { id } = useParams<{ id: string }>();
 
-  const relatedBooks = [
-    { maSach: "S002", tenSach: "Cấu trúc dữ liệu & Giải thuật", donGia: 120000, hinh: "/images/data-structure.jpg" },
-    { maSach: "S003", tenSach: "Lập trình Java căn bản", donGia: 180000, hinh: "/images/java.jpg" },
-    { maSach: "S004", tenSach: "Python cho người mới bắt đầu", donGia: 99000, hinh: "/images/python.jpg" },
-  ];
-
-  const [quantity, setQuantity] = useState(book.soLuongTon > 0 ? 1 : 0);
+  const [book, setBook] = useState<BookDetail | null>(null);
+  const [relatedBooks, setRelatedBooks] = useState<BookList[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
 
-  const handleQuantityChange = (delta: number) => {
-    const newQty = quantity + delta;
-    if (newQty >= 1 && newQty <= book.soLuongTon) {
-      setQuantity(newQty);
+  /* ================== LOAD DATA ================== */
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const bookData = await fetchBookDetail(id);
+        setBook(bookData);
+        setQuantity(bookData.stock_quantity > 0 ? 1 : 0);
+
+        const allBooks = await fetchBookList();
+        setRelatedBooks(
+          allBooks.filter((b) => b.book_id !== id).slice(0, 4)
+        );
+      } catch {
+        setError("Không thể tải thông tin sách");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [id]);
+
+  /* ================== HANDLERS ================== */
+  const changeQty = (delta: number) => {
+    if (!book) return;
+    const next = quantity + delta;
+    if (next >= 1 && next <= book.stock_quantity) {
+      setQuantity(next);
     }
   };
 
-  const handleAddToCart = (e: React.FormEvent) => {
+  const addToCart = (e: React.FormEvent) => {
     e.preventDefault();
-    if (book.soLuongTon > 0) {
-      setShowModal(true);
-    }
+    if (!book || book.stock_quantity === 0) return;
+    setShowModal(true);
   };
 
-  return (
-    <div className="bg-[#f2fbf7] min-h-screen pb-20 font-roboto">
-      {/* Header Wave Effect */}
-      <div className="relative bg-linear-to-br from-[#ccfbf1]/95 to-[#e0f2fe]/95 pt-16 pb-24 text-center overflow-hidden">
-        <div className="container mx-auto px-4 relative z-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-[#333] mb-4 font-quicksand">
-            Chi Tiết Sản Phẩm
-          </h1>
-          <nav className="flex justify-center space-x-2 text-sm text-gray-500 font-medium">
-            <Link href="/" className="hover:text-[#0F9D58] transition-colors">Trang chủ</Link>
-            <span>/</span>
-            <span className="text-[#0F9D58] font-bold">{book.tenSach}</span>
-          </nav>
+  /* ================== LOADING ================== */
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="animate-spin text-[#0F9D58]" size={48} />
         </div>
-        
-        <div className="absolute bottom-0 left-0 w-full leading-0">
-          <svg className="relative block w-[calc(130%+1.3px)] h-17.5" viewBox="0 0 1200 120" preserveAspectRatio="none">
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#f2fbf7"></path>
-          </svg>
-        </div>
-      </div>
+        <Footer />
+      </>
+    );
+  }
 
-      {/* Main Product Card */}
-      <div className="container mx-auto px-4 -mt-12 relative z-20">
-        <div className="bg-white rounded-[20px] shadow-[0_15px_35px_rgba(15,157,88,0.1)] p-6 md:p-10 lg:p-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            
-            <div className="lg:col-span-5 flex items-center justify-center bg-white rounded-2xl relative min-h-100">
-              {book.soLuongTon === 0 && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-2xl">
-                  <span className="bg-black/80 text-white px-6 py-2 rounded-lg font-bold text-xl tracking-wider">HẾT HÀNG</span>
+  /* ================== ERROR ================== */
+  if (error || !book) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex flex-col items-center justify-center">
+          <p className="text-xl font-bold mb-4">{error}</p>
+          <Link href="/" className="text-[#0F9D58] font-bold flex items-center">
+            <ArrowLeft className="mr-2" /> Về trang chủ
+          </Link>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  /* ================== RENDER ================== */
+  return (
+    <>
+      <Header />
+      <div className="bg-[#f2fbf7] min-h-screen pt-20 pb-20">
+        <div className="container mx-auto px-4">
+          <div className="bg-white rounded-3xl p-8 shadow-xl grid lg:grid-cols-12 gap-10">
+
+            {/* IMAGE */}
+            <div className="lg:col-span-5 relative h-105">
+              {book.stock_quantity === 0 && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-2xl">
+                  <span className="bg-black text-white px-6 py-2 rounded-lg font-bold">
+                    HẾT HÀNG
+                  </span>
                 </div>
               )}
-              <Image 
-                src={`/images/${book.hinh}`} 
-                alt={book.tenSach}
-                width={400}
-                height={600}
-                className={`max-h-112.5 w-auto object-contain transition-transform duration-300 hover:scale-105 drop-shadow-2xl ${book.soLuongTon === 0 ? 'grayscale opacity-40' : ''}`}
+              <Image
+                src={getImageUrl(book.cover_image_url)}
+                alt={book.title}
+                fill
+                priority
+                className={`object-contain ${
+                  book.stock_quantity === 0 ? "grayscale opacity-40" : ""
+                }`}
               />
             </div>
 
+            {/* INFO */}
             <div className="lg:col-span-7">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-[#333] mb-4 font-quicksand leading-tight">
-                {book.tenSach}
-              </h2>
+              <h1 className="text-4xl font-extrabold mb-4">{book.title}</h1>
 
               <div className="flex flex-wrap gap-3 mb-6">
-                <MetaTag icon={<UserPen size={16}/>} label="Tác giả" value={book.tacGia} />
-                <MetaTag icon={<Book size={16}/>} label="Thể loại" value={book.tenTheLoai} />
-                <div className="bg-[#f8f9fa] border border-gray-100 px-4 py-2 rounded-full flex items-center text-sm">
-                  <PackageOpen size={16} className="text-[#0F9D58] mr-2" />
-                  <span className="font-bold mr-1 text-gray-700">Tình trạng:</span>
-                  {book.soLuongTon > 0 ? (
-                    <span className="text-[#0F9D58] font-bold">Còn hàng ({book.soLuongTon})</span>
-                  ) : (
-                    <span className="text-red-500 font-bold">Hết hàng</span>
-                  )}
-                </div>
+                <Meta icon={<UserPen size={16} />} label="Tác giả" value={book.author} />
+                {book.publisher && (
+                  <Meta icon={<Book size={16} />} label="NXB" value={book.publisher} />
+                )}
+                {book.category_name && (
+                  <Meta icon={<Book size={16} />} label="Thể loại" value={book.category_name} />
+                )}
               </div>
 
-              <div className="flex text-yellow-400 mb-6 items-center">
-                {[...Array(5)].map((_, i) => <Star key={i} size={18} fill="currentColor" />)}
-                <span className="text-gray-400 text-sm ml-3">(Đánh giá khách hàng)</span>
+              <div className="flex text-yellow-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={18} fill="currentColor" />
+                ))}
               </div>
 
-              <h3 className="text-4xl font-bold text-[#0F9D58] mb-6">
-                {book.donGia.toLocaleString('vi-VN')} đ
-              </h3>
-
-              <p className="text-gray-500 leading-relaxed mb-8 text-justify">
-                {book.moTa}
+              <p className="text-4xl font-bold text-[#0F9D58] mb-6">
+                {Number(book.price).toLocaleString("vi-VN")} đ
               </p>
 
-              <hr className="border-gray-100 mb-8" />
+              <p className="text-gray-600 mb-8">{book.description}</p>
 
-              <form onSubmit={handleAddToCart} className="flex flex-wrap items-end gap-6">
+              <form onSubmit={addToCart} className="flex items-end gap-6">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-2">Số lượng</label>
-                  <div className="flex items-center bg-[#f8f9fa] border border-gray-100 rounded-full p-1 w-fit">
-                    <button 
-                      type="button" 
-                      onClick={() => handleQuantityChange(-1)}
-                      disabled={book.soLuongTon === 0}
-                      className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm hover:bg-[#0F9D58] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Minus size={16} />
+                  <label className="text-sm font-bold mb-2 block">Số lượng</label>
+                  <div className="flex items-center border rounded-full px-3 py-1">
+                    <button type="button" onClick={() => changeQty(-1)}>
+                      <Minus />
                     </button>
-                    <input 
-                      type="text" 
-                      readOnly 
+                    <input
+                      readOnly
                       value={quantity}
-                      className="w-16 text-center bg-transparent font-bold text-lg outline-none"
+                      className="w-12 text-center font-bold"
                     />
-                    <button 
-                      type="button" 
-                      onClick={() => handleQuantityChange(1)}
-                      disabled={book.soLuongTon === 0}
-                      className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm hover:bg-[#0F9D58] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Plus size={16} />
+                    <button type="button" onClick={() => changeQty(1)}>
+                      <Plus />
                     </button>
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="submit"
-                  disabled={book.soLuongTon === 0}
-                  className={`flex items-center justify-center gap-2 px-10 py-3.5 rounded-full font-bold text-lg transition-all shadow-lg ${
-                    book.soLuongTon > 0 
-                    ? 'bg-[#0F9D58] text-white hover:bg-[#0B8043] hover:-translate-y-1 shadow-[#0F9D58]/30' 
-                    : 'bg-gray-400 text-white cursor-not-allowed'
-                  }`}
+                  disabled={book.stock_quantity === 0}
+                  className="bg-[#0F9D58] text-white px-10 py-3 rounded-full font-bold hover:bg-[#0B8043] disabled:bg-gray-400"
                 >
-                  {book.soLuongTon > 0 ? (
-                    <><ShoppingCart size={20} /> Thêm vào giỏ</>
-                  ) : (
-                    <><Ban size={20} /> Hết hàng</>
-                  )}
+                  <ShoppingCart className="inline mr-2" />
+                  Thêm vào giỏ
                 </button>
               </form>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Related Books Section */}
-      <div className="container mx-auto px-4 mt-20">
-        <div className="flex items-center gap-4 mb-10">
-          <h3 className="text-2xl font-bold text-[#333] flex items-center whitespace-nowrap font-quicksand">
-            <LibraryBig className="text-[#0F9D58] mr-3" /> Sách Cùng Thể Loại
-          </h3>
-          <div className="h-0.5 bg-gray-200 w-full rounded-full"></div>
-        </div>
+          {/* RELATED */}
+          {relatedBooks.length > 0 && (
+            <div className="mt-20">
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
+                <LibraryBig className="text-[#0F9D58] mr-3" />
+                Sách liên quan
+              </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {relatedBooks.map((item) => (
-            <div key={item.maSach} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-transparent hover:border-[#0F9D58]/20">
-              <div className="h-64 bg-white relative flex items-center justify-center p-6">
-                <Image 
-                  src={item.hinh} 
-                  alt={item.tenSach}
-                  fill
-                  className="object-contain p-4 drop-shadow-md group-hover:scale-110 transition-transform duration-300"
-                />
-              </div>
-              <div className="p-5 bg-white text-center">
-                <h4 className="font-bold text-gray-800 truncate mb-2 hover:text-[#0F9D58] transition-colors cursor-pointer">
-                  {item.tenSach}
-                </h4>
-                <p className="text-[#0F9D58] font-bold text-lg">
-                  {item.donGia.toLocaleString('vi-VN')} đ
-                </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {relatedBooks.map((b) => (
+                  <Link key={b.book_id} href={`/book/${b.book_id}`}>
+                    <div className="bg-white rounded-2xl p-4 shadow hover:shadow-xl transition">
+                      <div className="relative h-56 mb-4">
+                        <Image
+                          src={getImageUrl(b.cover_image_url)}
+                          alt={b.title}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <h4 className="font-bold truncate">{b.title}</h4>
+                      <p className="text-[#0F9D58] font-bold">
+                        {Number(b.price).toLocaleString("vi-VN")} đ
+                      </p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
-          ))}
+          )}
         </div>
-      </div>
 
-      {/* Success Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="bg-[#0F9D58] text-white p-6 text-center">
-              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle size={40} />
-              </div>
-              <h5 className="text-xl font-bold">Thành công</h5>
-            </div>
-            <div className="p-8 text-center text-lg text-gray-600 font-medium">
-              Đã thêm sản phẩm vào giỏ hàng!
-            </div>
-            <div className="p-6 pt-0 flex gap-4 justify-center">
-              <button 
+        {/* MODAL */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-3xl p-8 text-center">
+              <CheckCircle size={48} className="text-[#0F9D58] mx-auto mb-4" />
+              <p className="text-lg font-bold mb-6">
+                Đã thêm sản phẩm vào giỏ hàng
+              </p>
+              <button
                 onClick={() => setShowModal(false)}
-                className="px-6 py-2 border-2 border-gray-200 text-gray-500 rounded-full font-bold hover:bg-gray-50 transition-all"
+                className="bg-[#0F9D58] text-white px-6 py-2 rounded-full"
               >
-                Ở lại trang
+                Đóng
               </button>
-              <Link 
-                href="/"
-                className="px-6 py-2 bg-[#0F9D58] text-white rounded-full font-bold hover:bg-[#0B8043] transition-all"
-              >
-                Về trang chủ
-              </Link>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+      <Footer />
+    </>
   );
 };
 
-const MetaTag = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) => (
-  <div className="bg-[#f8f9fa] border border-gray-100 px-4 py-2 rounded-full flex items-center text-sm shadow-sm">
+/* ================== META ================== */
+const Meta = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-center bg-gray-100 px-4 py-2 rounded-full text-sm">
     <span className="text-[#0F9D58] mr-2">{icon}</span>
-    <span className="font-bold mr-1 text-gray-700">{label}:</span>
-    <span className="text-gray-500">{value}</span>
+    <b className="mr-1">{label}:</b> {value}
   </div>
 );
 

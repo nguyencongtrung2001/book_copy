@@ -24,7 +24,7 @@ export interface BookDetail{
 }
 
 export async function fetchBookList(): Promise<BookList[]> {
-    const response = await fetch(`${API_BASE_URL}/books`, {
+    const response = await fetch(`${API_BASE_URL}/api/books`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ export async function fetchBookList(): Promise<BookList[]> {
 
 
 export async function fetchBookDetail(book_id: string): Promise<BookDetail> {
-    const response = await fetch(`${API_BASE_URL}/books/${book_id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/books/${book_id}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
