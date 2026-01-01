@@ -1,83 +1,76 @@
 "use client";
+import React from 'react';
+import { Users, ShoppingBag, Book } from 'lucide-react';
+import StatCard from '@/components/admin/StatCard';
+import DashboardCharts from '@/components/admin/DashboardCharts';
 
-import React, { useMemo } from 'react';
-import { getCurrentUser } from '@/api/auth';
-import { Users, BookOpen, ShoppingCart, DollarSign } from 'lucide-react';
-
-const DashboardPage = () => {
-  // Use useMemo instead of useState + useEffect to avoid cascading renders
-  const userName = useMemo(() => {
-    const user = getCurrentUser();
-    return user ? user.fullname : 'Admin';
-  }, []);
-
-  const stats = [
-    { title: 'Tổng người dùng', value: '1,234', icon: Users, color: 'bg-blue-500' },
-    { title: 'Tổng sách', value: '789', icon: BookOpen, color: 'bg-green-500' },
-    { title: 'Đơn hàng', value: '456', icon: ShoppingCart, color: 'bg-purple-500' },
-    { title: 'Doanh thu', value: '123M', icon: DollarSign, color: 'bg-orange-500' },
-  ];
+export default function AdminDashboard() {
+  // Giả lập dữ liệu từ ViewModel (Sau này bạn fetch từ API)
+  const mockData = {
+    months: ['T1', 'T2', 'T3', 'T4', 'T5'],
+    delivered: [10, 25, 45, 30, 55],
+    cancelled: [2, 5, 3, 8, 4],
+    revenue: [1500000, 3200000, 4100000, 2900000, 5000000],
+    statusCounts: [15, 10, 5, 50, 5] // Theo thứ tự doughnutData.labels
+  };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Chào mừng, {userName}!
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Đây là trang quản trị của nhà sách UTE
+    <div className="bg-[#1A202C] min-h-screen p-6 md:p-8 flex flex-col gap-8">
+      <header className="border-b border-white/10 pb-4">
+        <h1 className="text-3xl font-bold text-white mb-2">Tổng quan hệ thống</h1>
+        <p className="text-white/60 text-sm">
+          Cập nhật lúc: {new Date().toLocaleTimeString('vi-VN')} - {new Date().toLocaleDateString('vi-VN')}
         </p>
-      </div>
+      </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-500 text-sm">{stat.title}</p>
-                  <h3 className="text-2xl font-bold text-gray-800 mt-2">
-                    {stat.value}
-                  </h3>
-                </div>
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <Icon className="text-white" size={24} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex flex-wrap gap-6">
+        <StatCard 
+          title="Tổng người dùng" 
+          value={1250} 
+          description="Khách: 1200 | Admin: 50" 
+          icon={<Users />} 
+          variant="primary" 
+        />
+        <StatCard 
+          title="Tổng đơn hàng" 
+          value={456} 
+          description="Doanh thu dự kiến tăng trưởng tốt" 
+          icon={<ShoppingBag />} 
+          variant="success" 
+        />
+        <StatCard 
+          title="Kho sách" 
+          value={890} 
+          description="Tồn: 700 | Đã bán: 190" 
+          icon={<Book />} 
+          variant="warning" 
+        />
       </div>
 
-      {/* Recent Activity */}
-      <div className="mt-8 bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Hoạt động gần đây
+      {/* Status Detail Section */}
+      <div className="bg-[#2D3748] rounded-2xl p-6 shadow-lg">
+        <h2 className="text-xl font-semibold text-[#E2E8F0] mb-6 border-b border-white/10 pb-4">
+          Chi tiết trạng thái đơn hàng
         </h2>
-        <div className="space-y-4">
-          {[1, 2, 3].map((item) => (
-            <div
-              key={item}
-              className="flex items-center justify-between border-b pb-4 last:border-0"
-            >
-              <div>
-                <p className="font-medium">Đơn hàng mới #00{item}</p>
-                <p className="text-sm text-gray-500">2 phút trước</p>
-              </div>
-              <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-sm">
-                Mới
-              </span>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+          {[
+            { label: 'Chờ xác nhận', val: 15, color: 'text-[#ECC94B]', border: 'border-[#ECC94B]' },
+            { label: 'Đang xử lý', val: 10, color: 'text-[#4FD1C5]', border: 'border-[#4FD1C5]' },
+            { label: 'Đang giao', val: 5, color: 'text-[#805AD5]', border: 'border-[#805AD5]' },
+            { label: 'Đã giao', val: 50, color: 'text-[#48BB78]', border: 'border-[#48BB78]' },
+            { label: 'Đã hủy', val: 5, color: 'text-[#F56565]', border: 'border-[#F56565]' },
+          ].map((item, idx) => (
+            <div key={idx} className={`bg-[#1A202C] p-4 rounded-xl text-center border border-[#4A5568] border-b-4 ${item.border} hover:-translate-y-1 transition-all`}>
+              <div className={`text-2xl font-bold ${item.color}`}>{item.val}</div>
+              <div className="text-[#EDF2F7] text-[10px] uppercase font-medium">{item.label}</div>
             </div>
           ))}
         </div>
+
+        <DashboardCharts data={mockData} />
       </div>
     </div>
   );
-};
-
-export default DashboardPage;
+}

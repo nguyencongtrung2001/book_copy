@@ -1,158 +1,85 @@
 "use client";
 
-import { useRequireAuth } from '@/contexts/AuthContext';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React, { Children } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
-  BookOpen, 
-  ShoppingCart, 
+  Home, 
+  Box, 
   Users, 
-  LogOut,
-  Menu,
-  X
-} from 'lucide-react';
-import { useState } from 'react';
+  ShoppingCart, 
+  MessageSquare, 
+  LogOut 
+} from "lucide-react";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { user, isLoading } = useRequireAuth('admin');
+const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Show loading while checking auth
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0F9D58] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Đang tải...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not admin, don't render (will redirect)
-  if (!user || user.role !== 'admin') {
-    return null;
-  }
 
   const menuItems = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/dashboard/books', icon: BookOpen, label: 'Quản lý sách' },
-    { href: '/dashboard/orders', icon: ShoppingCart, label: 'Đơn hàng' },
-    { href: '/dashboard/users', icon: Users, label: 'Người dùng' },
+    { name: "Trang chủ", href: "/admin", icon: <Home size={20} /> },
+    { name: "Quản lý sản phẩm", href: "/dashboard/products", icon: <Box size={20} /> },
+    { name: "Quản lý người dùng", href: "/dashboard/users", icon: <Users size={20} /> },
+    { name: "Quản lý đơn hàng", href: "/dashboard/orders", icon: <ShoppingCart size={20} /> },
+    { name: "Phản hồi liên hệ", href: "/dashboard/contacts", icon: <MessageSquare size={20} /> },
   ];
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (href: string) => pathname === href;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-slate-800 text-white rounded-lg"
+    <>
+      {/* Sidebar Container */}
+      <aside
+        className={`fixed left-0 top-0 bottom-0 w-70 bg-[#1A202C] text-white shadow-2xl z-40 p-4 transition-transform duration-300 ease-in-out overflow-y-auto
+          ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
-        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed left-0 top-0 h-full w-64 bg-slate-800 text-white z-40
-        transition-transform duration-300 lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="p-6 border-b border-slate-700">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <BookOpen className="text-[#0F9D58]" size={32} />
-            <div>
-              <h2 className="text-xl font-bold">Admin Panel</h2>
-              <p className="text-xs text-gray-400">Nhà Sách UTE</p>
-            </div>
-          </Link>
+        <div className="flex items-center justify-center h-16 border-b border-gray-700 mb-6">
+          <span className="text-2xl font-bold text-[#4FD1C5] tracking-tight">
+            ADMIN DASHBOARD
+          </span>
         </div>
 
-        {/* User info */}
-        <div className="p-4 bg-slate-700/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#0F9D58] rounded-full flex items-center justify-center font-bold">
-              {user.fullname.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{user.fullname}</p>
-              <p className="text-xs text-gray-400">Administrator</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="mt-6 px-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg mb-2
-                  transition-colors duration-200
-                  ${isActive(item.href) 
-                    ? 'bg-[#0F9D58] text-white' 
-                    : 'text-gray-300 hover:bg-slate-700'
-                  }
-                `}
+        <nav className="grow">
+          <ul className="space-y-2">
+            {menuItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group font-medium
+                    ${isActive(item.href) 
+                      ? "bg-[#63B3ED] text-white" 
+                      : "hover:bg-[#4A5568] text-gray-300 hover:translate-x-1"}`}
+                >
+                  <span className={`mr-3 ${isActive(item.href) ? "text-white" : "text-gray-400 group-hover:text-white"}`}>
+                    {item.icon}
+                  </span>
+                  {item.name}
+                </Link>
+              </li>
+            ))}
+            
+            {/* Logout Button */}
+            <li>
+              <button
+                onClick={() => console.log("Logout function here")}
+                className="w-full flex items-center px-4 py-3 rounded-xl text-gray-300 font-medium hover:bg-red-500 hover:text-white transition-all duration-200 mt-4"
               >
-                <Icon size={20} />
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
+                <LogOut size={20} className="mr-3 text-red-500 group-hover:text-white" />
+                Đăng xuất
+              </button>
+            </li>
+          </ul>
         </nav>
-
-        {/* Logout button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-slate-700 transition-colors"
-          >
-            <LogOut size={20} />
-            <span className="font-medium">Về trang chủ</span>
-          </Link>
-        </div>
       </aside>
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
+      {Children} # nằm bên phải
+      {/* Overlay for mobile when sidebar is open */}
+      {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+          onClick={onClose}
         />
       )}
-
-      {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen">
-        {/* Header */}
-        <header className="bg-white shadow-sm sticky top-0 z-20">
-          <div className="px-4 lg:px-8 py-4 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-800 ml-12 lg:ml-0">
-              {menuItems.find(item => item.href === pathname)?.label || 'Dashboard'}
-            </h1>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 hidden sm:inline">
-                {user.email}
-              </span>
-            </div>
-          </div>
-        </header>
-
-        {/* Page Content */}
-        <div className="p-4 lg:p-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    </>
   );
-}
+};
+
+export default Sidebar;
