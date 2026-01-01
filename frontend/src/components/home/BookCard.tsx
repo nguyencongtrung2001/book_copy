@@ -9,23 +9,21 @@ interface BookProps {
   title: string;
   price: number;
   image: string;
-  stock: number;
-  isHot?: boolean;
-  isTrending?: boolean;
+  stock_quantity: number;
+
 }
 
-const BookCard = ({ id, title, price, image, stock, isHot, isTrending }: BookProps) => {
+const BookCard = ({ id, title, price, image,  stock_quantity }: BookProps) => {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full group">
       {/* Image Wrap */}
       <div className="relative h-60 w-full flex items-center justify-center p-4 bg-white">
         <div className="absolute top-2.5 left-2.5 bg-slate-800/80 backdrop-blur-xs text-white text-[10px] px-2 py-1 rounded-lg z-10 font-bold">
-          Kho: {stock}
+          Kho: {  stock_quantity}
         </div>
         
-        {isHot && <div className="absolute top-2.5 right-2.5 bg-red-500 text-white text-[10px] px-2 py-1 rounded-lg z-10 font-bold shadow-md shadow-red-500/30">HOT</div>}
-        {isTrending && <div className="absolute top-2.5 right-2.5 bg-blue-500 text-white text-[10px] px-2 py-1 rounded-lg z-10 font-bold shadow-md shadow-blue-500/30">Xu hướng</div>}
-        {stock > 0 && stock < 10 && <div className="absolute top-9 left-2.5 bg-orange-500 text-white text-[10px] px-2 py-1 rounded-lg z-10 font-bold">Sắp hết</div>}
+        
+        {  stock_quantity > 0 &&   stock_quantity < 10 && <div className="absolute top-9 left-2.5 bg-orange-500 text-white text-[10px] px-2 py-1 rounded-lg z-10 font-bold">Sắp hết</div>}
 
         <Link href={`/book/${id}`} className="relative w-full h-full">
           <Image 

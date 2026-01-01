@@ -1,4 +1,4 @@
-
+"use client"
 import Hero from '@/components/home/Hero';
 import BookCard from '@/components/home/BookCard';
 import { Users, Smile, BadgeCheck, BookOpenText } from 'lucide-react';
@@ -7,15 +7,21 @@ import Footer from '@/components/Layout/Footer';
 import {TestimonialCard} from '@/components/home/Testimonials'
 import {StatItem} from '@/components/home/Stats'
 import {data} from '@/data/data'
+import { useEffect, useState } from "react";
+import { fetchBookList, BookList } from "@/api/book";
 
 
 
 
 export default function HomePage() {
-  const allBooks = [
-    { id: '1', title: 'Lập trình React cho người mới', price: 150000, image: 'book1.jpg', stock: 15, isHot: true },
-    { id: '2', title: 'Cấu trúc dữ liệu và giải thuật', price: 120000, image: 'book2.jpg', stock: 5 },
-  ];
+ const [books, setBooks] = useState<BookList[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBookList()
+      .then(setBooks)
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <main>
@@ -40,11 +46,24 @@ export default function HomePage() {
             </div>
           </div>
           
-
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {allBooks.map(book => (
-              <BookCard key={book.id} {...book} />
-            ))}
+            {loading ? (
+  <p className="text-center col-span-full text-slate-500">
+    Đang tải sách...
+  </p>
+) : (
+  books.map((book) => (
+    <BookCard
+      key={book.book_id}
+      id={book.book_id}
+      title={book.title}
+      price={book.price}
+      image={book.cover_image_url}
+      stock_quantity={book.stock_quantity}
+    />
+  ))
+)}
+
           </div>
         </div>
 

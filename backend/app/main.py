@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db, init_db
 from app.routers.user import router as user_router
+from app.routers.book import router as book_router
 
 app = FastAPI(
     title="Book Shop API",
@@ -32,7 +33,9 @@ def on_startup():
     print("📚 API Docs: http://127.0.0.1:8000/docs")
 
 # Include routers
-app.include_router(user_router)
+app.include_router(user_router, prefix="/api")
+app.include_router(book_router, prefix="/api")
+
 
 @app.get("/", tags=["Root"])
 def root():
