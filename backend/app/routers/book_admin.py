@@ -1,79 +1,240 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, func, or_
+from typing import Optional
+import uuid
 
-# Import Database function (Sửa lại đường dẫn import nếu file database.py của bạn nằm chỗ khác trong core)
 from app.core.database import get_db
-
-# Import Model và Schema vừa tạo
+from app.core.dependencies import require_admin
 from app.models.book import Book
-from app.schemas.book import BookCreate, BookUpdate, BookResponse
+from app.models.category import Category
+from app.models.user import User
+from app.schemas.book_admin import (
+    BookCreateAdmin, 
+    BookUpdateAdmin, 
+    BookResponseAdmin,
+    BookListResponseAdmin
+)
 
-router = APIRouter(prefix="/books", tags=["Books"])
+router = APIRouter(prefix="/admin/books", tags=["Admin - Books"])
 
 
-# 1. Lấy danh sách Books (có phân trang)
-@router.get("/", response_model=List[BookResponse])
-def get_books(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    books = db.query(Book).offset(skip).limit(limit).all()
-    return books
+@router.get("/", response_model=BookListResponseAdmin)
+async def get_all_books_admin(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    search: Optional[str] = Query(None, description="Tìm kiếm theo tên sách hoặc tác giả"),
+    category_id: Optional[str] = Query(None, description="Lọc theo thể loại"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Lấy danh sách tất cả sách (Admin) - có phân trang và tìm kiếm"""
+    
+    # Build query
+    stmt = select(Book).options(joinedload(Book.category))
+    
+    # Apply filters
+    if search:
+        search_filter = or_(
+            Book.title.ilike(f"%{search}%"),
+            Book.author.ilike(f"%{search}%")
+        )
+        stmt = stmt.where(search_filter)
+    
+    if category_id:
+        stmt = stmt.where(Book.category_id == category_id)
+    
+    # Count total
+    count_stmt = select(func.count()).select_from(Book)
+    if search:
+        count_stmt = count_stmt.where(search_filter)
+    if category_id:
+        count_stmt = count_stmt.where(Book.category_id == category_id)
+    
+    total = db.execute(count_stmt).scalar()
+    
+    # Get books with pagination
+    stmt = stmt.offset(skip).limit(limit).order_by(Book.created_at.desc())
+    result = db.execute(stmt)
+    books = result.scalars().all()
+    
+    return {
+        "total": total,
+        "books": [BookResponseAdmin.model_validate(book) for book in books]
+    }
 
 
-# 2. Lấy chi tiết 1 Book theo ID
-@router.get("/{book_id}", response_model=BookResponse)
-def get_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+@router.get("/{book_id}", response_model=BookResponseAdmin)
+async def get_book_detail_admin(
+    book_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Lấy chi tiết một cuốn sách (Admin)"""
+    
+    stmt = select(Book).options(joinedload(Book.category)).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one_or_none()
+    
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-    return book
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy sách"
+        )
+    
+    return BookResponseAdmin.model_validate(book)
 
 
-# 3. Thêm Book mới
-@router.post("/", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
-def create_book(book_data: BookCreate, db: Session = Depends(get_db)):
-    # Chuyển đổi từ Schema sang Model
+@router.post("/", response_model=BookResponseAdmin, status_code=status.HTTP_201_CREATED)
+async def create_book_admin(
+    book_data: BookCreateAdmin,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Tạo sách mới (Admin)"""
+    
+    # Kiểm tra category tồn tại
+    stmt = select(Category).where(Category.category_id == book_data.category_id)
+    category = db.execute(stmt).scalar_one_or_none()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Thể loại không tồn tại"
+        )
+    
+    # Tạo book_id tự động
+    new_book_id = f"B{str(uuid.uuid4().int)[:8]}"
+    
+    # Tạo book mới
     new_book = Book(
+        book_id=new_book_id,
         title=book_data.title,
         author=book_data.author,
         publisher=book_data.publisher,
-        publishyear=book_data.publishyear,
-        categoryid=book_data.categoryid,
+        publication_year=book_data.publication_year,
+        category_id=book_data.category_id,
         price=book_data.price,
-        stock=book_data.stock,
+        stock_quantity=book_data.stock_quantity,
+        sold_quantity=0,
         description=book_data.description,
-        imageurl=book_data.imageurl,
+        cover_image_url=book_data.cover_image_url
     )
+    
     db.add(new_book)
     db.commit()
     db.refresh(new_book)
-    return new_book
+    
+    # Load lại với category
+    stmt = select(Book).options(joinedload(Book.category)).where(Book.book_id == new_book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one()
+    
+    return BookResponseAdmin.model_validate(book)
 
 
-# 4. Cập nhật Book
-@router.put("/{book_id}", response_model=BookResponse)
-def update_book(book_id: int, book_update: BookUpdate, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+@router.put("/{book_id}", response_model=BookResponseAdmin)
+async def update_book_admin(
+    book_id: str,
+    book_data: BookUpdateAdmin,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Cập nhật thông tin sách (Admin)"""
+    
+    # Tìm book
+    stmt = select(Book).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one_or_none()
+    
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    # Lấy những trường có giá trị (loại bỏ null) để cập nhật
-    update_data = book_update.dict(exclude_unset=True)
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy sách"
+        )
+    
+    # Kiểm tra category nếu có update
+    if book_data.category_id:
+        stmt = select(Category).where(Category.category_id == book_data.category_id)
+        category = db.execute(stmt).scalar_one_or_none()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Thể loại không tồn tại"
+            )
+    
+    # Update các field
+    update_data = book_data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        setattr(book, key, value)  # Cập nhật thuộc tính tương ứng
-
+        setattr(book, key, value)
+    
     db.commit()
     db.refresh(book)
-    return book
+    
+    # Load lại với category
+    stmt = select(Book).options(joinedload(Book.category)).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one()
+    
+    return BookResponseAdmin.model_validate(book)
 
 
-# 5. Xóa Book
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(Book).filter(Book.id == book_id).first()
+async def delete_book_admin(
+    book_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Xóa sách (Admin)"""
+    
+    stmt = select(Book).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one_or_none()
+    
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy sách"
+        )
+    
+    # Kiểm tra xem sách đã có trong đơn hàng chưa
+    if book.order_details:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không thể xóa sách đã có trong đơn hàng. Vui lòng đặt số lượng tồn kho về 0."
+        )
+    
     db.delete(book)
     db.commit()
+    
     return None
+
+
+@router.patch("/{book_id}/stock", response_model=BookResponseAdmin)
+async def update_stock_admin(
+    book_id: str,
+    stock_quantity: int = Query(..., ge=0, description="Số lượng tồn kho mới"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_admin)
+):
+    """Cập nhật nhanh số lượng tồn kho (Admin)"""
+    
+    stmt = select(Book).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one_or_none()
+    
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy sách"
+        )
+    
+    book.stock_quantity = stock_quantity
+    db.commit()
+    db.refresh(book)
+    
+    # Load lại với category
+    stmt = select(Book).options(joinedload(Book.category)).where(Book.book_id == book_id)
+    result = db.execute(stmt)
+    book = result.scalar_one()
+    
+    return BookResponseAdmin.model_validate(book)

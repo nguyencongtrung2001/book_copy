@@ -5,6 +5,7 @@ from sqlalchemy import text
 from app.core.database import get_db, init_db
 from app.routers.user import router as user_router
 from app.routers.book import router as book_router
+from app.routers.book_admin import router as book_admin_router  # Import router admin
 
 app = FastAPI(
     title="Book Shop API",
@@ -35,6 +36,7 @@ def on_startup():
 # Include routers
 app.include_router(user_router, prefix="/api")
 app.include_router(book_router, prefix="/api")
+app.include_router(book_admin_router, prefix="/api")  # Thêm router admin
 
 
 @app.get("/", tags=["Root"])
@@ -61,4 +63,4 @@ def health_check():
         "status": "healthy",
         "service": "Book Shop API",
         "version": "1.0.0"
-    }
+}   
