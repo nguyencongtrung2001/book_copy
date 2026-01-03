@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { 
   MapPin, 
@@ -8,30 +8,61 @@ import {
   Phone, 
   Clock, 
   Send, 
-  ChevronRight 
+  ChevronRight,
+  Loader2,
+  CheckCircle
 } from "lucide-react";
 import { useForm } from "react-hook-form";
-
-// Giả lập trạng thái đăng nhập (trong thực tế lấy từ AuthContext)
-const daDangNhap = false; 
+import { useAuth } from "@/contexts/AuthContext";
+import { createContact, ContactCreate } from "@/api/contact";
 
 interface ContactFormData {
-  hoTen: string;
-  email: string;
-  tieuDe: string;
-  noiDung: string;
+  full_name?: string;
+  email?: string;
+  subject: string;
+  message: string;
 }
 
 export default function ContactPage() {
+  const { isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ContactFormData>();
 
-  const onSubmit = (data: ContactFormData) => {
-    console.log("Dữ liệu gửi đi:", data);
-    alert("Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất.");
+  const onSubmit = async (data: ContactFormData) => {
+    setLoading(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      const contactData: ContactCreate = {
+        subject: data.subject,
+        message: data.message,
+        // Chỉ gửi full_name và email nếu chưa đăng nhập
+        ...((!isAuthenticated) && {
+          full_name: data.full_name,
+          email: data.email
+        })
+      };
+
+      await createContact(contactData);
+      setSuccess(true);
+      reset();
+      
+      // Auto hide success message after 5s
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Đã xảy ra lỗi");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,10 +120,10 @@ export default function ContactPage() {
                   content="Thứ 2 - Thứ 7: 8:00 - 18:00" 
                 />
 
-                {/* Google Map Placeholder */}
+                {/* Google Map */}
                 <div className="rounded-xl overflow-hidden shadow-sm h-48 border border-gray-100">
                   <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3833.81525048247!2d108.21444107584166!3d16.075052939281735!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x314218307d81cc95%3A0x23f71694f71a7d65!2zNDggQ2FvIFRo4bqvbmcsIFRoYW5oIELDr25oLCBI4bqjaSBDaMOidSwgxJDDoCBO4bq1bmcgNTUwMDAwLCBWaWV0bmFt!5e0!3m2!1sen!2s!4v1700000000000!5m2!1sen!2s" 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3833.81525048247!2d108.21444107584166!3d16.075052939281735!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x314218307d81cc95%3A0x23f71694f71a7d65!2zNDggQ2FvIFRo4bqvbmcsIFRoYW5oIELDrW5oLCBI4bqjaSBDaMOidSwgxJDDoCBO4bq1bmcgNTUwMDAwLCBWaWV0bmFt!5e0!3m2!1sen!2s!4v1700000000000!5m2!1sen!2s" 
                     width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy"
                   ></iframe>
                 </div>
@@ -107,29 +138,49 @@ export default function ContactPage() {
                 Gửi Tin Nhắn
               </h3>
               <p className="text-gray-500 mb-6 text-sm italic">
-                Vui lòng điền vào biểu mẫu dưới đây. Chúng tôi sẽ phản hồi sớm nhất.
+                {isAuthenticated 
+                  ? "Thông tin của bạn đã được tự động điền" 
+                  : "Vui lòng điền đầy đủ thông tin liên hệ"}
               </p>
 
+              {/* Success Message */}
+              {success && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3 text-green-700 animate-in fade-in slide-in-from-top duration-300">
+                  <CheckCircle size={20} />
+                  <span className="font-medium">Gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất.</span>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                {!daDangNhap && (
+                {/* Chỉ hiện form nhập tay nếu chưa đăng nhập */}
+                {!isAuthenticated && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-semibold mb-1">Họ tên</label>
+                      <label className="block text-sm font-semibold mb-1">Họ tên *</label>
                       <input 
-                        {...register("hoTen", { required: "Vui lòng nhập họ tên" })}
-                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        {...register("full_name", { required: "Vui lòng nhập họ tên" })}
+                        disabled={loading}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="Nguyễn Văn A"
                       />
-                      {errors.hoTen && <p className="text-red-500 text-xs mt-1">{errors.hoTen.message}</p>}
+                      {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name.message}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold mb-1">Email</label>
+                      <label className="block text-sm font-semibold mb-1">Email *</label>
                       <input 
                         {...register("email", { 
                           required: "Vui lòng nhập email",
                           pattern: { value: /^\S+@\S+$/i, message: "Email không hợp lệ" }
                         })}
-                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                        disabled={loading}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="email@example.com"
                       />
                       {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
@@ -138,30 +189,43 @@ export default function ContactPage() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-semibold mb-1">Tiêu đề</label>
+                  <label className="block text-sm font-semibold mb-1">Tiêu đề *</label>
                   <input 
-                    {...register("tieuDe", { required: "Vui lòng nhập tiêu đề" })}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                    {...register("subject", { required: "Vui lòng nhập tiêu đề" })}
+                    disabled={loading}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Vấn đề cần hỗ trợ"
                   />
-                  {errors.tieuDe && <p className="text-red-500 text-xs mt-1">{errors.tieuDe.message}</p>}
+                  {errors.subject && <p className="text-red-500 text-xs mt-1">{errors.subject.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-1">Nội dung</label>
+                  <label className="block text-sm font-semibold mb-1">Nội dung *</label>
                   <textarea 
-                    {...register("noiDung", { required: "Vui lòng nhập nội dung" })}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 h-40 resize-none overflow-y-auto focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all"
+                    {...register("message", { required: "Vui lòng nhập nội dung" })}
+                    disabled={loading}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 h-40 resize-none overflow-y-auto focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Mô tả chi tiết nội dung liên hệ..."
                   />
-                  {errors.noiDung && <p className="text-red-500 text-xs mt-1">{errors.noiDung.message}</p>}
+                  {errors.message && <p className="text-red-500 text-xs mt-1">{errors.message.message}</p>}
                 </div>
 
                 <button 
                   type="submit" 
-                  className="w-full bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold py-3 rounded-full shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-1 active:scale-95"
+                  disabled={loading}
+                  className="w-full bg-[#0F9D58] hover:bg-[#0B8043] text-white font-bold py-3 rounded-full shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Send size={18} /> Gửi liên hệ
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} />
+                      Gửi liên hệ
+                    </>
+                  )}
                 </button>
               </form>
             </div>

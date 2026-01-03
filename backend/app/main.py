@@ -6,7 +6,8 @@ from app.core.database import get_db, init_db
 from app.routers.user import router as user_router
 from app.routers.book import router as book_router
 from app.routers.book_admin import router as book_admin_router
-from app.routers.category import router as category_router  # Import category router
+from app.routers.category import router as category_router
+from app.routers.contact import router as contact_router  # ← THÊM DÒNG NÀY
 
 app = FastAPI(
     title="Book Shop API",
@@ -37,7 +38,8 @@ def on_startup():
 app.include_router(user_router, prefix="/api")
 app.include_router(book_router, prefix="/api")
 app.include_router(book_admin_router, prefix="/api")
-app.include_router(category_router, prefix="/api")  # Thêm router category
+app.include_router(category_router, prefix="/api")
+app.include_router(contact_router, prefix="/api")  # ← THÊM DÒNG NÀY
 
 @app.get("/", tags=["Root"])
 def root():
