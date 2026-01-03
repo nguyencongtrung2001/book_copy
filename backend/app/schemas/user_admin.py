@@ -1,31 +1,40 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
-# --- Base dùng chung ---
-class UserBase(BaseModel):
+# Schema cho tạo user mới (Admin)
+class UserCreateAdmin(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    full_name: str
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    role: Optional[str] = "customer"
+    password: str = Field(..., min_length=6)
+    phone: Optional[str] = Field(None, max_length=15)
+    address: Optional[str] = Field(None, max_length=255)
+    role: str = Field(default='customer')
 
-# --- Dùng cho CREATE (Cần pass) ---
-class UserCreate(UserBase):
-    password: str
-
-# --- Dùng cho UPDATE ---
-class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
+# Schema cho cập nhật user (Admin)
+class UserUpdateAdmin(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=6)
+    phone: Optional[str] = Field(None, max_length=15)
+    address: Optional[str] = Field(None, max_length=255)
+    role: Optional[str] = None
+
+# Schema response cho Admin
+class UserResponseAdmin(BaseModel):
+    user_id: str
+    full_name: str
+    email: str
     phone: Optional[str] = None
     address: Optional[str] = None
-    role: Optional[str] = None
-    password: Optional[str] = None
-
-# --- Dùng cho RESPONSE ---
-class UserResponse(UserBase):
-    user_id: str
+    role: str
     created_at: datetime
-    class Config:
-        from_attributes = True
+
+    model_config = {"from_attributes": True}
+
+# Schema cho danh sách users
+class UserListResponseAdmin(BaseModel):
+    total: int
+    users: list[UserResponseAdmin]
+
+    model_config = {"from_attributes": True}
