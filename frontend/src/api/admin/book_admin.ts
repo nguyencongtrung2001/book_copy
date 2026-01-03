@@ -49,16 +49,20 @@ export interface BookListResponse {
 // Helper để lấy token
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token');
+  console.log("🔑 Token:", token ? "✅ Có token" : "❌ Không có token");
+  return token;
 }
 
 // Helper để tạo headers với auth
 function getAuthHeaders(): HeadersInit {
   const token = getAuthToken();
-  return {
+  const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
+  console.log("📤 Headers:", headers);
+  return headers;
 }
 
 /**
@@ -76,20 +80,25 @@ export async function fetchBooksAdmin(
   if (search) params.append('search', search);
   if (categoryId) params.append('category_id', categoryId);
 
-  const response = await fetch(
-    `${API_BASE_URL}/api/admin/books?${params.toString()}`,
-    {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    }
-  );
+  const url = `${API_BASE_URL}/api/admin/books?${params.toString()}`;
+  console.log("🌐 API URL:", url);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  console.log("📡 Response status:", response.status);
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json().catch(() => ({}));
+    console.error("❌ Error data:", errorData);
     throw new Error(errorData.detail || 'Lấy danh sách sách thất bại');
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("✅ Success data:", data);
+  return data;
 }
 
 /**

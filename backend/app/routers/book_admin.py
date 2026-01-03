@@ -23,34 +23,16 @@ router = APIRouter(prefix="/admin/books", tags=["Admin - Books"])
 async def get_all_books_admin(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    search: Optional[str] = Query(None, description="Tìm kiếm theo tên sách hoặc tác giả"),
-    category_id: Optional[str] = Query(None, description="Lọc theo thể loại"),
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin)
 ):
-    """Lấy danh sách tất cả sách (Admin) - có phân trang và tìm kiếm"""
+    """Lấy danh sách tất cả sách (Admin) - có phân trang"""
     
-    # Build query
+    # Build query đơn giản
     stmt = select(Book).options(joinedload(Book.category))
-    
-    # Apply filters
-    if search:
-        search_filter = or_(
-            Book.title.ilike(f"%{search}%"),
-            Book.author.ilike(f"%{search}%")
-        )
-        stmt = stmt.where(search_filter)
-    
-    if category_id:
-        stmt = stmt.where(Book.category_id == category_id)
     
     # Count total
     count_stmt = select(func.count()).select_from(Book)
-    if search:
-        count_stmt = count_stmt.where(search_filter)
-    if category_id:
-        count_stmt = count_stmt.where(Book.category_id == category_id)
-    
     total = db.execute(count_stmt).scalar()
     
     # Get books with pagination
@@ -58,7 +40,7 @@ async def get_all_books_admin(
     result = db.execute(stmt)
     books = result.scalars().all()
     
-    # FIX: Chuyển đổi thủ công để đảm bảo có category_name
+    # Chuyển đổi thủ công để đảm bảo có category_name
     books_data = []
     for book in books:
         books_data.append({

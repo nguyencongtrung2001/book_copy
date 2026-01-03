@@ -1,4 +1,5 @@
-"use client"
+"use client";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,10 +27,15 @@ export default function AdminProductManagement() {
     try {
       setLoading(true);
       setError("");
+      console.log("🔄 Đang gọi API...");
       const response = await fetchBooksAdmin(0, 100, searchTerm, categoryFilter);
+      console.log("✅ API Response:", response);
+      console.log("📚 Books:", response.books);
+      console.log("📊 Total:", response.total);
       setBooks(response.books);
       setTotal(response.total);
     } catch (err) {
+      console.error("❌ Lỗi:", err);
       setError(err instanceof Error ? err.message : "Lỗi tải dữ liệu");
     } finally {
       setLoading(false);
