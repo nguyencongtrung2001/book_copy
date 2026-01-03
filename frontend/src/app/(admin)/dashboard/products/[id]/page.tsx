@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -91,7 +93,6 @@ export default function AdminProductDetailPage() {
     <div className="bg-[#1A202C] min-h-screen p-4 md:p-8 text-[#E2E8F0]">
       <div className="max-w-6xl mx-auto bg-[#2D3748] rounded-2xl p-6 md:p-10 shadow-2xl border border-gray-700">
         
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8">
           <Link href="/dashboard/products" className="hover:text-[#4FD1C5]">Quản lý sách</Link>
           <span>/</span>
@@ -100,7 +101,6 @@ export default function AdminProductDetailPage() {
 
         <div className="grid lg:grid-cols-12 gap-8">
           
-          {/* IMAGE */}
           <div className="lg:col-span-5">
             <div className="relative aspect-3/4 max-w-md mx-auto bg-[#1A202C] rounded-lg overflow-hidden">
               <Image 
@@ -113,13 +113,11 @@ export default function AdminProductDetailPage() {
             </div>
           </div>
 
-          {/* INFO */}
           <div className="lg:col-span-7">
             <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-6">
               {book.title}
             </h1>
 
-            {/* Meta Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <InfoCard icon={<Book size={20} />} label="Mã sách" value={book.book_id} />
               <InfoCard icon={<Book size={20} />} label="Tác giả" value={book.author} />
@@ -140,7 +138,6 @@ export default function AdminProductDetailPage() {
               />
             </div>
 
-            {/* Stock Info */}
             <div className="bg-[#1A202C] p-6 rounded-xl mb-6 border border-gray-700">
               <h3 className="text-[#4FD1C5] font-bold mb-4 uppercase text-xs tracking-widest">
                 Thống kê kho
@@ -159,7 +156,6 @@ export default function AdminProductDetailPage() {
               </div>
             </div>
 
-            {/* Description */}
             {book.description && (
               <div className="bg-[#1A202C] p-6 rounded-xl mb-6 border border-gray-700">
                 <h3 className="text-[#4FD1C5] font-bold mb-3 uppercase text-xs tracking-widest">
@@ -169,7 +165,6 @@ export default function AdminProductDetailPage() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3">
               <Link 
                 href={`/dashboard/products/edit/${book.book_id}`}
@@ -197,7 +192,6 @@ export default function AdminProductDetailPage() {
   );
 }
 
-// Helper Component
 function InfoCard({ 
   icon, 
   label, 

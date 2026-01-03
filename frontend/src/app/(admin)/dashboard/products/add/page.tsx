@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -40,8 +42,6 @@ export default function AddBookPage() {
       reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
       
-      // Trong thực tế, bạn cần upload file lên server và lấy URL
-      // Hiện tại chỉ lưu tên file
       setFormData(prev => ({ ...prev, cover_image_url: file.name }));
     }
   };
@@ -52,7 +52,6 @@ export default function AddBookPage() {
     setLoading(true);
 
     try {
-      // Validate
       if (!formData.title || !formData.author || !formData.category_id) {
         throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc");
       }
@@ -81,173 +80,171 @@ export default function AddBookPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Left Column */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">
-                  Tên Sách <span className="text-red-500">*</span>
-                </label>
-                <input
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="Nhập tên sách"
-                  required
-                />
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">
+                    Tên Sách <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="Nhập tên sách"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">
+                    Tác Giả <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="author"
+                    value={formData.author}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="Nhập tên tác giả"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">Nhà Xuất Bản</label>
+                  <input
+                    name="publisher"
+                    value={formData.publisher}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="Nhập nhà xuất bản"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">Năm Xuất Bản</label>
+                  <input
+                    type="number"
+                    name="publication_year"
+                    value={formData.publication_year || ""}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="2024"
+                    min="1900"
+                    max="2100"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">
-                  Tác Giả <span className="text-red-500">*</span>
-                </label>
-                <input
-                  name="author"
-                  value={formData.author}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="Nhập tên tác giả"
-                  required
-                />
-              </div>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">
+                    Thể Loại <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="category_id"
+                    value={formData.category_id}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    required
+                  >
+                    <option value="">-- Chọn thể loại --</option>
+                    <option value="CAT001">Công nghệ thông tin</option>
+                    <option value="CAT002">Kinh tế</option>
+                    <option value="CAT003">Văn học</option>
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">Nhà Xuất Bản</label>
-                <input
-                  name="publisher"
-                  value={formData.publisher}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="Nhập nhà xuất bản"
-                />
-              </div>
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">
+                    Giá <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="150000"
+                    min="0"
+                    step="1000"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">Năm Xuất Bản</label>
-                <input
-                  type="number"
-                  name="publication_year"
-                  value={formData.publication_year || ""}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="2024"
-                  min="1900"
-                  max="2100"
-                />
+                <div>
+                  <label className="block text-gray-300 font-semibold mb-2">Số Lượng Tồn</label>
+                  <input
+                    type="number"
+                    name="stock_quantity"
+                    value={formData.stock_quantity}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
+                    placeholder="100"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-gray-300 font-semibold mb-2">
+                    <Upload size={18} /> Ảnh Bìa
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-teal-500 file:text-gray-900 hover:file:bg-teal-600 cursor-pointer"
+                  />
+                  {preview && (
+                    <div className="mt-4 relative w-32 h-48 mx-auto">
+                      <Image 
+                        src={preview} 
+                        alt="Preview" 
+                        fill 
+                        className="object-cover rounded-lg border border-gray-600" 
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">
-                  Thể Loại <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="category_id"
-                  value={formData.category_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  required
-                >
-                  <option value="">-- Chọn thể loại --</option>
-                  <option value="CAT001">Công nghệ thông tin</option>
-                  <option value="CAT002">Kinh tế</option>
-                  <option value="CAT003">Văn học</option>
-                </select>
-              </div>
+            <div className="mt-6">
+              <label className="block text-gray-300 font-semibold mb-2">Mô Tả</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400 resize-none"
+                placeholder="Nhập mô tả sách..."
+              />
+            </div>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">
-                  Giá <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="150000"
-                  min="0"
-                  step="1000"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 font-semibold mb-2">Số Lượng Tồn</label>
-                <input
-                  type="number"
-                  name="stock_quantity"
-                  value={formData.stock_quantity}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400"
-                  placeholder="100"
-                  min="0"
-                />
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-gray-300 font-semibold mb-2">
-                  <Upload size={18} /> Ảnh Bìa
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-teal-500 file:text-gray-900 hover:file:bg-teal-600 cursor-pointer"
-                />
-                {preview && (
-                  <div className="mt-4 relative w-32 h-48 mx-auto">
-                    <Image 
-                      src={preview} 
-                      alt="Preview" 
-                      fill 
-                      className="object-cover rounded-lg border border-gray-600" 
-                    />
-                  </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+              <button 
+                type="submit"
+                disabled={loading}
+                className="px-10 py-4 bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Đang thêm...
+                  </>
+                ) : (
+                  'Thêm Sách'
                 )}
-              </div>
+              </button>
+              <Link 
+                href="/dashboard/products"
+                className="px-10 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg transition-all inline-flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} /> Quay Lại
+              </Link>
             </div>
-          </div>
-
-          {/* Description */}
-          <div className="mt-6">
-            <label className="block text-gray-300 font-semibold mb-2">Mô Tả</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-teal-400 resize-none"
-              placeholder="Nhập mô tả sách..."
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-            <button 
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-10 py-4 bg-teal-500 hover:bg-teal-600 text-gray-900 font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  Đang thêm...
-                </>
-              ) : (
-                'Thêm Sách'
-              )}
-            </button>
-            <Link 
-              href="/dashboard/products"
-              className="px-10 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg transition-all inline-flex items-center justify-center gap-2"
-            >
-              <ArrowLeft size={20} /> Quay Lại
-            </Link>
-          </div>
+          </form>
         </div>
       </div>
     </div>
