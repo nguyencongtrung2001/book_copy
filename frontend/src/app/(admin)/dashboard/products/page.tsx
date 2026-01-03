@@ -11,7 +11,8 @@ import {
   Edit, 
   Trash2,
   Loader2,
-  Search
+  Search,
+  Tags 
 } from "lucide-react";
 import { fetchBooksAdmin, deleteBookAdmin, BookAdmin } from "@/api/admin/book_admin";
 
@@ -92,6 +93,13 @@ export default function AdminProductManagement() {
         >
           <PlusCircle size={20} />
           Thêm Sách Mới
+        </Link>
+         <Link
+          href="/dashboard/category"
+          className="flex items-center justify-center gap-2 bg-[#7ba1e7] hover:bg-[#3372e9] text-white px-6 py-2.5 rounded-lg font-bold transition-all shadow-md hover:-translate-y-0.5 active:scale-95"
+        >
+          <Tags size={20} />
+          Quản lý thể loại
         </Link>
         
         <div className="ml-auto text-white font-semibold">

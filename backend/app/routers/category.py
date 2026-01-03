@@ -1,6 +1,8 @@
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.services import category as category_service
-
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session, joinedload
+from app.core.database import get_db
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 

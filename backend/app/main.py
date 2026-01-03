@@ -6,7 +6,7 @@ from app.core.database import get_db, init_db
 from app.routers.user import router as user_router
 from app.routers.book import router as book_router
 from app.routers.book_admin import router as book_admin_router  # Import router admin
-
+from app.routers.category import router as category_admin_router
 app = FastAPI(
     title="Book Shop API",
     description="API cho hệ thống quản lý nhà sách UTE",
@@ -37,6 +37,7 @@ def on_startup():
 app.include_router(user_router, prefix="/api")
 app.include_router(book_router, prefix="/api")
 app.include_router(book_admin_router, prefix="/api")  # Thêm router admin
+app.include_router(category_admin_router, prefix="/api")  # Thêm router admin
 
 
 @app.get("/", tags=["Root"])
