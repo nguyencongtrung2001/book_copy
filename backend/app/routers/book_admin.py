@@ -58,9 +58,29 @@ async def get_all_books_admin(
     result = db.execute(stmt)
     books = result.scalars().all()
     
+    # FIX: Chuyển đổi thủ công để đảm bảo có category_name
+    books_data = []
+    for book in books:
+        books_data.append({
+            "book_id": book.book_id,
+            "title": book.title,
+            "author": book.author,
+            "publisher": book.publisher,
+            "publication_year": book.publication_year,
+            "category_id": book.category_id,
+            "category_name": book.category.category_name if book.category else None,
+            "price": book.price,
+            "stock_quantity": book.stock_quantity,
+            "sold_quantity": book.sold_quantity,
+            "description": book.description,
+            "cover_image_url": book.cover_image_url,
+            "created_at": book.created_at,
+            "updated_at": book.updated_at,
+        })
+    
     return {
         "total": total,
-        "books": [BookResponseAdmin.model_validate(book) for book in books]
+        "books": books_data
     }
 
 
