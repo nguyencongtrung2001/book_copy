@@ -5,8 +5,9 @@ from sqlalchemy import text
 from app.core.database import get_db, init_db
 from app.routers.user import router as user_router
 from app.routers.book import router as book_router
-from app.routers.book_admin import router as book_admin_router  # Import router admin
-from app.routers.category import router as category_admin_router
+from app.routers.book_admin import router as book_admin_router
+from app.routers.category import router as category_router  # Import category router
+
 app = FastAPI(
     title="Book Shop API",
     description="API cho hệ thống quản lý nhà sách UTE",
@@ -19,7 +20,6 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        # Thêm domain production nếu có
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -36,9 +36,8 @@ def on_startup():
 # Include routers
 app.include_router(user_router, prefix="/api")
 app.include_router(book_router, prefix="/api")
-app.include_router(book_admin_router, prefix="/api")  # Thêm router admin
-app.include_router(category_admin_router, prefix="/api")  # Thêm router admin
-
+app.include_router(book_admin_router, prefix="/api")
+app.include_router(category_router, prefix="/api")  # Thêm router category
 
 @app.get("/", tags=["Root"])
 def root():
@@ -64,4 +63,4 @@ def health_check():
         "status": "healthy",
         "service": "Book Shop API",
         "version": "1.0.0"
-}   
+    }
