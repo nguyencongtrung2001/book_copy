@@ -1,3 +1,4 @@
+# backend/app/routers/order.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -22,10 +23,38 @@ async def create_order(
     - Yêu cầu đăng nhập
     - Tự động lấy user_id từ token
     """
-    # Override user_id from token
-    order_data.user_id = current_user.user_id
     
-    return order_service.create_order(db, order_data)
+    # 🔍 DEBUG: Log dữ liệu nhận được
+    print("=" * 60)
+    print("📦 RECEIVED ORDER DATA:")
+    print(f"   Raw data: {order_data}")
+    print(f"   User ID from token: {current_user.user_id}")
+    print(f"   User name: {current_user.full_name}")
+    print("=" * 60)
+    
+    try:
+        # ✅ Override user_id from token
+        order_data.user_id = current_user.user_id
+        
+        # 🔍 DEBUG: Log sau khi gán user_id
+        print(f"✅ Order data after user_id assignment:")
+        print(f"   user_id: {order_data.user_id}")
+        print(f"   shipping_address: {order_data.shipping_address}")
+        print(f"   payment_method_id: {order_data.payment_method_id}")
+        print(f"   voucher_code: {order_data.voucher_code}")
+        print(f"   items: {order_data.items}")
+        
+        result = order_service.create_order(db, order_data)
+        
+        print("✅ ORDER CREATED SUCCESSFULLY!")
+        return result
+        
+    except Exception as e:
+        print(f"❌ ERROR creating order: {str(e)}")
+        print(f"   Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 @router.get("/my-orders", response_model=List[OrderResponse])

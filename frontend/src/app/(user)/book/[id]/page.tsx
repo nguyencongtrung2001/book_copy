@@ -137,45 +137,64 @@ const BookDetailPage = () => {
     }
   };
 
-  const handleOrderNow = async () => {
-    if (!book || book.stock_quantity === 0) return;
+ const handleOrderNow = async () => {
+  if (!book || book.stock_quantity === 0) return;
 
-    if (!isAuthenticated || !user) {
-      alert("Vui lòng đăng nhập để đặt hàng");
-      router.push('/login');
-      return;
-    }
+  // ✅ Kiểm tra authentication
+  if (!isAuthenticated || !user) {
+    alert("Vui lòng đăng nhập để đặt hàng");
+    router.push('/login');
+    return;
+  }
 
-    if (!shippingAddress.trim()) {
-      setOrderError("Vui lòng nhập địa chỉ giao hàng");
-      return;
-    }
+  // ✅ Validate địa chỉ
+  if (!shippingAddress.trim()) {
+    setOrderError("Vui lòng nhập địa chỉ giao hàng");
+    return;
+  }
 
-    setIsSubmitting(true);
-    setOrderError("");
+  setIsSubmitting(true);
+  setOrderError("");
 
-    try {
-      const orderData: OrderCreate = {
-        shipping_address: shippingAddress,
-        payment_method_id: paymentMethod,
-        voucher_code: couponCode || undefined,
-        items: [{
-          book_id: book.book_id,
-          quantity: quantity
-        }]
-      };
+  try {
+    // ✅ FIX: Không cần gửi user_id, backend tự lấy từ token
+    const orderData: OrderCreate = {
+      shipping_address: shippingAddress,
+      payment_method_id: paymentMethod,
+      voucher_code: couponCode || undefined,
+      items: [{
+        book_id: book.book_id,
+        quantity: quantity
+      }]
+      // ❌ KHÔNG GỬI: user_id (backend tự động lấy từ current_user)
+    };
 
-      await createOrder(orderData);
-      setShowModal(true);
-      
-    } catch (err) {
-      console.error("Order error:", err);
-      setOrderError(err instanceof Error ? err.message : "Đặt hàng thất bại");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+    console.log("📦 Sending order:", orderData);
+    
+    const result = await createOrder(orderData);
+    
+    console.log("✅ Order created:", result);
+    
+    // Hiển thị modal thành công
+    setShowModal(true);
+    
+  } catch (err) {
+    console.error("❌ Order error:", err);
+    setOrderError(err instanceof Error ? err.message : "Đặt hàng thất bại");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+useEffect(() => {
+  console.log("🔐 Auth state:", {
+    isAuthenticated,
+    user: user ? {
+      id: user.id,
+      fullname: user.fullname,
+      role: user.role
+    } : null
+  });
+}, [isAuthenticated, user]);
   const closeModal = () => {
     setShowModal(false);
     router.push('/orders');
