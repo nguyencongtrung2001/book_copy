@@ -116,3 +116,29 @@ def delete(db: Session, contact_id: int):
     db.delete(contact)
     db.commit()
     return True
+
+def get_all_admin(db: Session, skip: int = 0, limit: int = 100):
+    return (
+        db.query(Contact)
+        .order_by(
+            Contact.status.asc(),  # 'pending' hiện lên trước 'resolved'
+            Contact.user_id.asc(),  # Nhóm tin nhắn của cùng 1 user
+            Contact.sent_at.desc(),  # Tin nhắn mới nhất hiện lên đầu
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+# 7. Thêm hàm lấy thông báo cho KHÁCH HÀNG
+def get_user_notifications(db: Session, user_id: str):
+    return (
+        db.query(Contact)
+        .filter(
+            Contact.user_id == user_id,
+            Contact.status == "resolved",  # Chỉ lấy những tin đã được phản hồi
+        )
+        .order_by(Contact.responded_at.desc())
+        .all()
+    )

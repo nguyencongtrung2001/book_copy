@@ -87,7 +87,7 @@ const Header = () => {
             {isAuthenticated && user ? (
               <div className="flex items-center gap-4">
                 {/* Notification */}
-                <Link href="/thong-bao" className="relative group p-2">
+                <Link href="/home/nofication" className="relative group p-2">
                   <i className="fas fa-bell text-xl text-[#0d9488] group-hover:animate-bounce"></i>
                   {notificationCount > 0 && (
                     <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">
