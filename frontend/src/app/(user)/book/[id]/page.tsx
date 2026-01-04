@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
-  UserPen,
+  User,
   Book,
   Star,
   Minus,
@@ -17,29 +17,26 @@ import {
   Loader2,
   Calendar,
   Package,
+  Truck,
 } from "lucide-react";
 
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Layout/Footer";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchBookDetail,
   fetchBookList,
   BookDetail,
   BookList,
 } from "@/api/book";
+import { createOrder, OrderCreate } from "@/api/order";
 
-/* ================== HELPER ================== */
 const getImageUrl = (image: string | null) => {
   if (!image) return "/books/default-book.png";
-  
-  // Nếu đã là URL đầy đủ (http/https)
   if (image.startsWith("http")) return image;
-  
-  // Nếu là tên file, thêm /books/
   return `/books/${image}`;
 };
 
-/* ================== RELATED BOOK CARD COMPONENT ================== */
 const RelatedBookCard = ({ book }: { book: BookList }) => {
   const [relatedImgError, setRelatedImgError] = useState(false);
   const relatedImgSrc = relatedImgError ? "/books/default-book.png" : getImageUrl(book.cover_image_url);
@@ -63,17 +60,11 @@ const RelatedBookCard = ({ book }: { book: BookList }) => {
         <p className="text-[#0F9D58] font-bold text-lg">
           {Number(book.price).toLocaleString("vi-VN")} đ
         </p>
-        {book.stock_quantity === 0 && (
-          <span className="inline-block mt-2 text-xs text-red-500 font-semibold">
-            Hết hàng
-          </span>
-        )}
       </div>
     </Link>
   );
 };
 
-/* ================== META COMPONENT ================== */
 const Meta = ({
   icon,
   label,
@@ -89,9 +80,10 @@ const Meta = ({
   </div>
 );
 
-/* ================== MAIN PAGE ================== */
 const BookDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
 
   const [book, setBook] = useState<BookDetail | null>(null);
   const [relatedBooks, setRelatedBooks] = useState<BookList[]>([]);
@@ -99,23 +91,27 @@ const BookDetailPage = () => {
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'PM001' | 'PM002'>('PM001');
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [imgError, setImgError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState("");
 
-  /* ================== LOAD DATA ================== */
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError("");
 
-        // Fetch book detail
         const bookData = await fetchBookDetail(id);
         setBook(bookData);
         setQuantity(bookData.stock_quantity > 0 ? 1 : 0);
-         
-        const   sumMoney =useMemo(({bookData.price,quantity}) =>  {return quantity*bookData.price},[bookData.price,quantity])
-        // Fetch related books (filter out current book)
+        
+        if (user?.address) {
+          setShippingAddress(user.address);
+        }
+
         const allBooks = await fetchBookList();
         setRelatedBooks(
           allBooks.filter((b) => b.book_id !== id).slice(0, 4)
@@ -131,9 +127,8 @@ const BookDetailPage = () => {
     if (id) {
       loadData();
     }
-  }, [id]);
+  }, [id, user]);
 
-  /* ================== HANDLERS ================== */
   const changeQty = (delta: number) => {
     if (!book) return;
     const next = quantity + delta;
@@ -142,20 +137,50 @@ const BookDetailPage = () => {
     }
   };
 
-  const addToCart = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleOrderNow = async () => {
     if (!book || book.stock_quantity === 0) return;
-    
-    console.log(`Adding ${quantity} of ${book.title} to cart`);
-    console.log(`Payment method: ${paymentMethod}`);
-    setShowModal(true);
+
+    if (!isAuthenticated || !user) {
+      alert("Vui lòng đăng nhập để đặt hàng");
+      router.push('/login');
+      return;
+    }
+
+    if (!shippingAddress.trim()) {
+      setOrderError("Vui lòng nhập địa chỉ giao hàng");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setOrderError("");
+
+    try {
+      const orderData: OrderCreate = {
+        shipping_address: shippingAddress,
+        payment_method_id: paymentMethod,
+        voucher_code: couponCode || undefined,
+        items: [{
+          book_id: book.book_id,
+          quantity: quantity
+        }]
+      };
+
+      await createOrder(orderData);
+      setShowModal(true);
+      
+    } catch (err) {
+      console.error("Order error:", err);
+      setOrderError(err instanceof Error ? err.message : "Đặt hàng thất bại");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
+    router.push('/orders');
   };
 
-  /* ================== LOADING STATE ================== */
   if (loading) {
     return (
       <>
@@ -171,7 +196,6 @@ const BookDetailPage = () => {
     );
   }
 
-  /* ================== ERROR STATE ================== */
   if (error || !book) {
     return (
       <>
@@ -198,28 +222,23 @@ const BookDetailPage = () => {
   }
 
   const imageSrc = imgError ? "/books/default-book.png" : getImageUrl(book.cover_image_url);
- 
+  const totalPrice = Number(book.price) * quantity;
 
-
-  /* ================== MAIN RENDER ================== */
   return (
     <>
       <Header />
       <div className="bg-[#f2fbf7] min-h-screen pt-24 pb-20">
         <div className="container mx-auto px-4">
           
-          {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-sm mb-6 text-gray-600">
             <Link href="/" className="hover:text-[#0F9D58]">Trang chủ</Link>
             <span>/</span>
             <span className="text-[#0F9D58] font-semibold">Chi tiết sách</span>
           </nav>
 
-          {/* Main Content */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-10">
 
-              {/* IMAGE SECTION */}
               <div className="lg:col-span-5">
                 <div className="relative aspect-3/4 max-w-md mx-auto">
                   {book.stock_quantity === 0 && (
@@ -243,16 +262,14 @@ const BookDetailPage = () => {
                 </div>
               </div>
 
-              {/* INFO SECTION */}
               <div className="lg:col-span-7 flex flex-col">
                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
                   {book.title}
                 </h1>
 
-                {/* Meta Information */}
                 <div className="flex flex-wrap gap-3 mb-6">
                   <Meta 
-                    icon={<UserPen size={16} />} 
+                    icon={<User size={16} />} 
                     label="Tác giả" 
                     value={book.author} 
                   />
@@ -279,7 +296,6 @@ const BookDetailPage = () => {
                   )}
                 </div>
 
-                {/* Rating */}
                 <div className="flex items-center gap-2 mb-6">
                   <div className="flex text-yellow-400">
                     {[...Array(5)].map((_, i) => (
@@ -289,7 +305,6 @@ const BookDetailPage = () => {
                   <span className="text-sm text-gray-600">(Chưa có đánh giá)</span>
                 </div>
 
-                {/* Price */}
                 <div className="mb-6">
                   <p className="text-4xl font-bold text-[#0F9D58]">
                     {Number(book.price).toLocaleString("vi-VN")} đ
@@ -301,7 +316,6 @@ const BookDetailPage = () => {
                   )}
                 </div>
 
-                {/* Description */}
                 {book.description && (
                   <div className="mb-8">
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Mô tả sản phẩm</h3>
@@ -309,106 +323,18 @@ const BookDetailPage = () => {
                   </div>
                 )}
 
-                {/* Payment Method Selection */}
-                <div className="mb-8">
-                  <h3 className="text-lg font-bold text-gray-800 mb-4">Phương thức thanh toán</h3>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {/* Cash Payment */}
-                    <label 
-                      className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                        paymentMethod === 'cash' 
-                          ? 'border-[#0F9D58] bg-[#0F9D58]/5' 
-                          : 'border-gray-200 hover:border-[#0F9D58]/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="cash"
-                        checked={paymentMethod === 'cash'}
-                        onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'online')}
-                        className="hidden"
-                      />
-                      <div className="flex items-center gap-3 w-full">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          paymentMethod === 'cash' 
-                            ? 'border-[#0F9D58]' 
-                            : 'border-gray-300'
-                        }`}>
-                          {paymentMethod === 'cash' && (
-                            <div className="w-3 h-3 bg-[#0F9D58] rounded-full"></div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <svg className="w-5 h-5 text-[#0F9D58]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            <span className="font-bold text-gray-800">Tiền mặt</span>
-                          </div>
-                          <p className="text-xs text-gray-500">Thanh toán khi nhận hàng</p>
-                        </div>
-                        {paymentMethod === 'cash' && (
-                          <CheckCircle size={20} className="text-[#0F9D58]" />
-                        )}
-                      </div>
-                    </label>
-
-                    {/* Online Payment */}
-                    <label 
-                      className={`relative flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                        paymentMethod === 'online' 
-                          ? 'border-[#0F9D58] bg-[#0F9D58]/5' 
-                          : 'border-gray-200 hover:border-[#0F9D58]/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="online"
-                        checked={paymentMethod === 'online'}
-                        onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'online')}
-                        className="hidden"
-                      />
-                      <div className="flex items-center gap-3 w-full">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          paymentMethod === 'online' 
-                            ? 'border-[#0F9D58]' 
-                            : 'border-gray-300'
-                        }`}>
-                          {paymentMethod === 'online' && (
-                            <div className="w-3 h-3 bg-[#0F9D58] rounded-full"></div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <svg className="w-5 h-5 text-[#0F9D58]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                            <span className="font-bold text-gray-800">Chuyển khoản</span>
-                          </div>
-                          <p className="text-xs text-gray-500">Thanh toán qua ngân hàng</p>
-                        </div>
-                        {paymentMethod === 'online' && (
-                          <CheckCircle size={20} className="text-[#0F9D58]" />
-                        )}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Add to Cart Form */}
-                <form onSubmit={addToCart} className="mt-auto">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
-                    <div className="shrink-0">
+                {book.stock_quantity > 0 && (
+                  <div className="space-y-6 mt-auto">
+                    
+                    <div>
                       <label className="text-sm font-bold mb-2 block text-gray-700">
                         Số lượng
                       </label>
-                      <div className="flex items-center border-2 border-gray-200 rounded-full px-3 py-2 bg-white">
+                      <div className="flex items-center border-2 border-gray-200 rounded-full px-3 py-2 bg-white w-fit">
                         <button 
                           type="button" 
                           onClick={() => changeQty(-1)}
-                          disabled={quantity <= 1 || book.stock_quantity === 0}
+                          disabled={quantity <= 1}
                           className="text-gray-600 hover:text-[#0F9D58] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
                           <Minus size={20} />
@@ -421,7 +347,7 @@ const BookDetailPage = () => {
                         <button 
                           type="button" 
                           onClick={() => changeQty(1)}
-                          disabled={quantity >= book.stock_quantity || book.stock_quantity === 0}
+                          disabled={quantity >= book.stock_quantity}
                           className="text-gray-600 hover:text-[#0F9D58] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                         >
                           <Plus size={20} />
@@ -429,35 +355,117 @@ const BookDetailPage = () => {
                       </div>
                     </div>
 
+                    <div>
+                      <label className="text-sm font-bold mb-2 block text-gray-700  items-center gap-2">
+                        <Truck size={16} />
+                        Địa chỉ giao hàng <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={shippingAddress}
+                        onChange={(e) => setShippingAddress(e.target.value)}
+                        placeholder="Nhập địa chỉ giao hàng"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#0F9D58] focus:ring-2 focus:ring-[#0F9D58]/20 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-bold mb-2 block text-gray-700">
+                        Phương thức thanh toán
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          paymentMethod === 'PM001' 
+                            ? 'border-[#0F9D58] bg-[#0F9D58]/5' 
+                            : 'border-gray-200 hover:border-[#0F9D58]/50'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="payment"
+                            value="PM001"
+                            checked={paymentMethod === 'PM001'}
+                            onChange={(e) => setPaymentMethod(e.target.value as 'PM001')}
+                            className="mr-3"
+                          />
+                          <div>
+                            <div className="font-bold text-gray-800">💵 Tiền mặt</div>
+                            <div className="text-xs text-gray-500">COD</div>
+                          </div>
+                        </label>
+
+                        <label className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          paymentMethod === 'PM002' 
+                            ? 'border-[#0F9D58] bg-[#0F9D58]/5' 
+                            : 'border-gray-200 hover:border-[#0F9D58]/50'
+                        }`}>
+                          <input
+                            type="radio"
+                            name="payment"
+                            value="PM002"
+                            checked={paymentMethod === 'PM002'}
+                            onChange={(e) => setPaymentMethod(e.target.value as 'PM002')}
+                            className="mr-3"
+                          />
+                          <div>
+                            <div className="font-bold text-gray-800">💳 Chuyển khoản</div>
+                            <div className="text-xs text-gray-500">Ngân hàng</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-bold mb-2 block text-gray-700">
+                        Mã giảm giá (nếu có)
+                      </label>
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="Nhập mã giảm giá"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-[#0F9D58] focus:ring-2 focus:ring-[#0F9D58]/20 outline-none"
+                      />
+                    </div>
+
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 font-medium">Tổng tiền:</span>
+                        <span className="text-2xl font-bold text-[#0F9D58]">
+                          {totalPrice.toLocaleString('vi-VN')} đ
+                        </span>
+                      </div>
+                    </div>
+
+                    {orderError && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                        {orderError}
+                      </div>
+                    )}
+
                     <button
-                      type="submit"
-                      disabled={book.stock_quantity === 0}
-                      className="flex-1 bg-[#0F9D58] text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#0B8043] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 shadow-lg disabled:transform-none flex items-center justify-center gap-2"
+                      type="button"
+                      onClick={handleOrderNow}
+                      disabled={isSubmitting}
+                      className="w-full bg-[#0F9D58] text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#0B8043] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 shadow-lg disabled:transform-none flex items-center justify-center gap-2"
                     >
-                      <ShoppingCart size={22} />
-                      {book.stock_quantity === 0 ? "Hết hàng" : "Thêm vào giỏ"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={22} className="animate-spin" />
+                          Đang xử lý...
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart size={22} />
+                          Đặt hàng ngay
+                        </>
+                      )}
                     </button>
-
-                   
                   </div>
-                </form>
-
-                {/* Additional Info */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl flex flex-row ">
-                   <input 
-                    type="text" 
-                    placeholder="Mã giảm giá"
-                    className="grow bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 focus:outline-none focus:border-[#0F9D58] transition-all"
-                  />
-                  <p className="text-sm text-gray-600">
-                    <span className="font-bold">Tổng số tiền : </span> {sumMoney}
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* RELATED BOOKS */}
           {relatedBooks.length > 0 && (
             <div className="mt-20">
               <h2 className="text-2xl md:text-3xl font-bold mb-8 flex items-center">
@@ -474,7 +482,6 @@ const BookDetailPage = () => {
           )}
         </div>
 
-        {/* SUCCESS MODAL */}
         {showModal && (
           <div 
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
@@ -487,32 +494,25 @@ const BookDetailPage = () => {
               <div className="w-20 h-20 bg-[#0F9D58]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={48} className="text-[#0F9D58]" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Thành công!</h3>
-              <p className="text-gray-600 mb-2">
-                Đã thêm <span className="font-bold">{quantity}</span> sản phẩm vào giỏ hàng
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">Đặt hàng thành công!</h3>
+              <p className="text-gray-600 mb-6">
+                Đơn hàng của bạn đã được tiếp nhận. Bạn có thể xem chi tiết đơn hàng trong mục &quot;Đơn hàng của tôi&quot;
               </p>
-              <div className="bg-gray-50 rounded-lg p-3 mb-6">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Phương thức thanh toán:</span>
-                  <br />
-                  <span className="text-[#0F9D58] font-bold">
-                    {paymentMethod === 'cash' ? '💵 Tiền mặt (COD)' : '💳 Chuyển khoản'}
-                  </span>
-                </p>
-              </div>
               <div className="flex gap-3">
                 <button
-                  onClick={closeModal}
+                  type="button"
+                  onClick={() => router.push('/')}
                   className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
                 >
-                  Đặt hàng
+                  Về trang chủ
                 </button>
-                <Link
-                  href="/cart"
+                <button
+                  type="button"
+                  onClick={closeModal}
                   className="flex-1 bg-[#0F9D58] text-white px-6 py-3 rounded-full font-bold hover:bg-[#0B8043] transition-all"
                 >
-                  Xem giỏ hàng
-                </Link>
+                  Xem đơn hàng
+                </button>
               </div>
             </div>
           </div>
