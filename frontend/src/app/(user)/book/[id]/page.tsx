@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -113,7 +113,8 @@ const BookDetailPage = () => {
         const bookData = await fetchBookDetail(id);
         setBook(bookData);
         setQuantity(bookData.stock_quantity > 0 ? 1 : 0);
-
+         
+        const   sumMoney =useMemo(({bookData.price,quantity}) =>  {return quantity*bookData.price},[bookData.price,quantity])
         // Fetch related books (filter out current book)
         const allBooks = await fetchBookList();
         setRelatedBooks(
@@ -197,6 +198,8 @@ const BookDetailPage = () => {
   }
 
   const imageSrc = imgError ? "/books/default-book.png" : getImageUrl(book.cover_image_url);
+ 
+
 
   /* ================== MAIN RENDER ================== */
   return (
@@ -434,13 +437,20 @@ const BookDetailPage = () => {
                       <ShoppingCart size={22} />
                       {book.stock_quantity === 0 ? "Hết hàng" : "Thêm vào giỏ"}
                     </button>
+
+                   
                   </div>
                 </form>
 
                 {/* Additional Info */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl flex flex-row ">
+                   <input 
+                    type="text" 
+                    placeholder="Mã giảm giá"
+                    className="grow bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 focus:outline-none focus:border-[#0F9D58] transition-all"
+                  />
                   <p className="text-sm text-gray-600">
-                    <span className="font-bold">📦 Miễn phí vận chuyển</span> cho đơn hàng từ 200.000đ
+                    <span className="font-bold">Tổng số tiền : </span> {sumMoney}
                   </p>
                 </div>
               </div>
@@ -495,7 +505,7 @@ const BookDetailPage = () => {
                   onClick={closeModal}
                   className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
                 >
-                  Tiếp tục mua
+                  Đặt hàng
                 </button>
                 <Link
                   href="/cart"

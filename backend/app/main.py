@@ -9,7 +9,7 @@ from app.routers.book_admin import router as book_admin_router
 from app.routers.category import router as category_router
 from app.routers.contact import router as contact_router  # ← THÊM DÒNG NÀY
 from app.routers.user_admin  import router as user_admin_router  # ← THÊM DÒNG NÀY
-
+from app.routers.order import router as order_router
 app = FastAPI(
     title="Book Shop API",
     description="API cho hệ thống quản lý nhà sách UTE",
@@ -42,7 +42,7 @@ app.include_router(book_admin_router, prefix="/api")
 app.include_router(category_router, prefix="/api")
 app.include_router(contact_router, prefix="/api")  # ← THÊM DÒNG NÀY
 app.include_router(user_admin_router, prefix="/api")  # ← THÊM DÒNG NÀY
-
+app.include_router(order_router, prefix="/api")
 @app.get("/", tags=["Root"])
 def root():
     return {
