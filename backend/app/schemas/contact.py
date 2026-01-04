@@ -43,3 +43,14 @@ class ContactListResponse(BaseModel):
     contacts: list[ContactResponse]
     
     model_config = ConfigDict(from_attributes=True)
+
+
+# Schema cho thông báo của user (chỉ lấy những tin đã được admin trả lời)
+class NotificationResponse(BaseModel):
+    contact_id: int
+    subject: str
+    message: str
+    admin_response: str
+    responded_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)

@@ -1,42 +1,50 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ChevronRight, 
   CheckCircle2, 
   MessageSquareDot, 
   Inbox,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react";
-
-// 1. Định nghĩa Interface cho dữ liệu thông báo
-interface Notification {
-  maLienHe: string;
-  tieuDe: string;
-  noiDung: string;
-  phanHoiAdmin: string;
-  ngayPhanHoi: string;
-}
+import { getNotifications, NotificationResponse } from "@/api/contact";
 
 export default function NotificationsPage() {
-  // Giả lập dữ liệu (Thực tế sẽ fetch từ API dựa trên UserId trong Session/Token)
-  const notifications: Notification[] = [
-    {
-      maLienHe: "LH001",
-      tieuDe: "Hỏi về thời gian giao hàng",
-      noiDung: "Chào nhà sách, mình muốn hỏi đơn hàng của mình khi nào thì được giao ạ?",
-      phanHoiAdmin: "Chào bạn, đơn hàng của bạn đã được đóng gói và bàn giao cho đơn vị vận chuyển. Dự kiến bạn sẽ nhận được trong 2-3 ngày tới nhé.",
-      ngayPhanHoi: "04/01/2026 08:30"
-    },
-    {
-      maLienHe: "LH002",
-      tieuDe: "Yêu cầu xuất hóa đơn",
-      noiDung: "Mình cần xuất hóa đơn cho công ty, admin hỗ trợ nhé.",
-      phanHoiAdmin: "Dạ vâng, bạn vui lòng gửi thông tin mã số thuế qua email info@bookshop.com để bộ phận kế toán xử lý ạ.",
-      ngayPhanHoi: "03/01/2026 15:45"
-    }
-  ];
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await getNotifications();
+        setNotifications(data);
+      } catch (err) {
+        console.error("Error loading notifications:", err);
+        setError(err instanceof Error ? err.message : "Lỗi tải thông báo");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f2fbf7] font-inter flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-[#0F9D58] mx-auto mb-4" size={48} />
+          <p className="text-gray-600">Đang tải thông báo...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f2fbf7] font-inter">
@@ -67,21 +75,32 @@ export default function NotificationsPage() {
       {/* BODY CONTENT */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+              {error}
+            </div>
+          )}
+
           {notifications.length === 0 ? (
             /* Empty State */
             <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in duration-700">
               <div className="w-24 h-24 bg-gray-200/50 rounded-full flex items-center justify-center mb-4">
                 <Inbox size={48} className="text-gray-400" />
               </div>
-              <h6 className="text-gray-500 font-medium">Hiện chưa có phản hồi nào mới</h6>
-              <Link href="/" className="mt-4 text-emerald-600 font-bold hover:underline">Tiếp tục mua sắm</Link>
+              <h6 className="text-gray-500 font-medium mb-2">Hiện chưa có phản hồi nào mới</h6>
+              <p className="text-sm text-gray-400 mb-4">
+                Các phản hồi từ admin sẽ hiển thị tại đây
+              </p>
+              <Link href="/" className="text-emerald-600 font-bold hover:underline">
+                Tiếp tục mua sắm
+              </Link>
             </div>
           ) : (
             /* Notification List */
             <div className="space-y-4">
               {notifications.map((item) => (
                 <div 
-                  key={item.maLienHe} 
+                  key={item.contact_id} 
                   className="bg-white rounded-xl shadow-sm border-l-4 border-emerald-500 overflow-hidden hover:shadow-md hover:scale-[1.01] transition-all duration-200 animate-in slide-in-from-bottom-4"
                 >
                   <div className="p-4 md:p-5">
@@ -89,23 +108,25 @@ export default function NotificationsPage() {
                     <div className="flex justify-between items-center mb-3">
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 size={16} className="text-emerald-500" />
-                        <span className="text-xs font-bold text-gray-800 uppercase tracking-tight">Admin đã trả lời</span>
+                        <span className="text-xs font-bold text-gray-800 uppercase tracking-tight">
+                          Admin đã trả lời
+                        </span>
                       </div>
                       <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
                         <Clock size={10} />
-                        {item.ngayPhanHoi}
+                        {new Date(item.responded_at).toLocaleString('vi-VN')}
                       </div>
                     </div>
 
                     {/* Title */}
                     <h6 className="font-bold text-gray-900 text-sm md:text-base mb-3">
-                      Tiêu đề: {item.tieuDe}
+                      Tiêu đề: {item.subject}
                     </h6>
 
                     {/* Original Query (Quote) */}
                     <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <p className="text-xs text-gray-500 italic leading-relaxed">
-                        Bạn: &quot;{item.noiDung}&quot;
+                        Bạn: &quot;{item.message}&quot;
                       </p>
                     </div>
 
@@ -114,7 +135,7 @@ export default function NotificationsPage() {
                       <div className="flex gap-2">
                         <MessageSquareDot size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                         <p className="text-emerald-800 text-sm leading-relaxed font-medium">
-                          Admin: {item.phanHoiAdmin}
+                          Admin: {item.admin_response}
                         </p>
                       </div>
                     </div>

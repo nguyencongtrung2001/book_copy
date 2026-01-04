@@ -4,15 +4,16 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getNotifications } from '@/api/contact';
 
 const Header = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  // Giả lập số lượng giỏ hàng và thông báo
-  const cartCount = 3; 
-  const notificationCount = 2;
+  // Giả lập số lượng giỏ hàng
+  const cartCount = 3;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -20,6 +21,28 @@ const Header = () => {
     
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Load notification count
+  useEffect(() => {
+    const loadNotificationCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const notifications = await getNotifications();
+          setNotificationCount(notifications.length);
+        } catch (err) {
+          console.error('Error loading notifications:', err);
+          setNotificationCount(0);
+        }
+      }
+    };
+
+    loadNotificationCount();
+    
+    // Refresh notification count every 5 minutes
+    const interval = setInterval(loadNotificationCount, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     if (confirm('Bạn có chắc muốn đăng xuất?')) {

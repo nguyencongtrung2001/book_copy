@@ -5,7 +5,13 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.core.dependencies import require_admin, get_current_user
 from app.models.user import User
-from app.schemas.contact import ContactCreate, ContactReply, ContactResponse, ContactListResponse
+from app.schemas.contact import (
+    ContactCreate, 
+    ContactReply, 
+    ContactResponse, 
+    ContactListResponse,
+    NotificationResponse
+)
 from app.services import contact as contact_service
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
@@ -109,3 +115,16 @@ async def get_my_contacts(
 ):
     """Lấy danh sách liên hệ của user hiện tại"""
     return contact_service.get_by_user_id(db, current_user.user_id)
+
+
+# 7. MỚI: Lấy thông báo (chỉ những liên hệ đã được admin trả lời)
+@router.get("/notifications", response_model=List[NotificationResponse])
+async def get_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Lấy thông báo cho user hiện tại
+    Chỉ trả về những liên hệ đã được admin phản hồi (status = 'resolved')
+    """
+    return contact_service.get_user_notifications(db, current_user.user_id)

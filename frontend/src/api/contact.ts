@@ -29,6 +29,15 @@ export interface ContactReply {
   admin_response: string;
 }
 
+// MỚI: Interface cho thông báo
+export interface NotificationResponse {
+  contact_id: number;
+  subject: string;
+  message: string;
+  admin_response: string;
+  responded_at: string;
+}
+
 // Helper để lấy token
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -74,6 +83,23 @@ export async function getMyContacts(): Promise<ContactResponse[]> {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || 'Lấy danh sách liên hệ thất bại');
+  }
+
+  return response.json();
+}
+
+/**
+ * MỚI: Lấy thông báo (chỉ những tin đã được admin trả lời)
+ */
+export async function getNotifications(): Promise<NotificationResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/api/contacts/notifications`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Lấy thông báo thất bại');
   }
 
   return response.json();
