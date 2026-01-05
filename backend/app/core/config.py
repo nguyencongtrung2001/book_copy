@@ -17,5 +17,12 @@ class Settings:
     # Chuyển đổi sang kiểu int thủ công
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
 
+    # Cấu hình email
+    MAIL_USERNAME = "thtnv9876@gmail.com"
+    MAIL_PASSWORD = "matkhaumailcuaban"
+    MAIL_FROM = "thtnv9876@gmail.com"
+    MAIL_PORT = 587
+    MAIL_SERVER = "smtp.gmail.com"
+
 # Khởi tạo object để các file khác sử dụng
 settings = Settings()
