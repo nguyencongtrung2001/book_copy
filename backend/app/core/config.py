@@ -18,11 +18,11 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 1440))
 
     # Cấu hình email
-    MAIL_USERNAME = "thtnv9876@gmail.com"
-    MAIL_PASSWORD = "matkhaumailcuaban"
-    MAIL_FROM = "thtnv9876@gmail.com"
-    MAIL_PORT = 587
-    MAIL_SERVER = "smtp.gmail.com"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+    MAIL_FROM = os.getenv("MAIL_FROM")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
 
 # Khởi tạo object để các file khác sử dụng
 settings = Settings()

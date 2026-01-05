@@ -7,7 +7,7 @@ venv/
 env/
 ENV/
 python/
-
+.env/
 # Python rác & Cache
 **/__pycache__/
 *.py[cod]
