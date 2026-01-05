@@ -91,7 +91,7 @@ const Header = () => {
             </Link>
 
             {isAuthenticated && (
-              <Link href="/tai-khoan" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/tai-khoan')}`}>
+              <Link href="/account" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/tai-khoan')}`}>
                 Tài khoản
               </Link>
             )}

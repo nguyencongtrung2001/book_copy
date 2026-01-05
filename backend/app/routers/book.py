@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Query
 from sqlalchemy.orm import Session, joinedload
 from app.core.database import get_db
 from app.models.book import Book
@@ -6,11 +6,19 @@ from app.schemas.book import BookList, BookDetail
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
-@router.get("/", response_model=list[BookList])
-def get_books(db: Session = Depends(get_db)):
-    """Lấy danh sách tất cả sách"""
-    books = db.query(Book).all()
-    return books
+
+@router.get("/")
+def get_books(
+    filter: str = Query("Tất cả", enum=["Tất cả", "Sách hot", "Xu hướng"]),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Book)
+
+    if filter == "Sách hot":
+        query = query.filter(Book.sold_quantity >= 150)
+    elif filter == "Xu hướng":
+        query = query.order_by(Book.created_at.desc())
+    return query.all()
 
 
 @router.get("/{book_id}", response_model=BookDetail)
