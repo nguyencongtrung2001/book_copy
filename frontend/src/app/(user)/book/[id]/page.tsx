@@ -197,7 +197,7 @@ useEffect(() => {
 }, [isAuthenticated, user]);
   const closeModal = () => {
     setShowModal(false);
-    router.push('/orders');
+    router.push('/account');
   };
 
   if (loading) {
@@ -549,6 +549,7 @@ useEffect(() => {
         >
           Về trang chủ
         </button>
+
         <button
           type="button"
           onClick={closeModal}

@@ -13,11 +13,18 @@ export interface OrderCreate {
   items: OrderItem[];
 }
 
+export interface BookInOrder {
+  book_id: string;
+  title: string;
+  cover_image_url: string | null;
+}
+
 export interface OrderDetailResponse {
   detail_id: number;
   book_id: string;
   quantity: number;
   unit_price: number;
+  book: BookInOrder | null;
 }
 
 export interface OrderResponse {
@@ -25,10 +32,17 @@ export interface OrderResponse {
   user_id: string;
   total_amount: number;
   order_status: string;
+  status_id: string;
   shipping_address: string;
   payment_method_id: string;
+  payment_method_name: string | null;
   created_at: string;
   order_details: OrderDetailResponse[];
+}
+
+export interface UserOrderHistoryResponse {
+  total: number;
+  orders: OrderResponse[];
 }
 
 // Helper để lấy token
@@ -46,30 +60,11 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-// Interface cho FastAPI validation error
-interface ValidationError {
-  type: string;
-  loc: (string | number)[];
-  msg: string;
-  input?: unknown;
-  ctx?: Record<string, unknown>;
-}
-
-interface ErrorResponse {
-  detail: string | ValidationError[];
-}
-
 /**
  * Tạo đơn hàng mới
  */
 export async function createOrder(orderData: OrderCreate): Promise<OrderResponse> {
-  // 🔍 DEBUG: Log dữ liệu trước khi gửi
-  console.log("=".repeat(60));
-  console.log("📤 FRONTEND SENDING ORDER:");
-  console.log("   Data:", JSON.stringify(orderData, null, 2));
-  console.log("   Token:", getAuthToken() ? "✅ Present" : "❌ Missing");
-  console.log("   Headers:", getAuthHeaders());
-  console.log("=".repeat(60));
+  console.log("📤 FRONTEND SENDING ORDER:", JSON.stringify(orderData, null, 2));
   
   try {
     const response = await fetch(`${API_BASE_URL}/api/orders/`, {
@@ -78,37 +73,18 @@ export async function createOrder(orderData: OrderCreate): Promise<OrderResponse
       body: JSON.stringify(orderData),
     });
 
-    // 🔍 DEBUG: Log response
-    console.log("📥 BACKEND RESPONSE:");
-    console.log("   Status:", response.status);
-    console.log("   Status Text:", response.statusText);
-    
-    const responseData = await response.json() as ErrorResponse | OrderResponse;
-    console.log("   Data:", JSON.stringify(responseData, null, 2));
+    const responseData = await response.json();
+    console.log("📥 BACKEND RESPONSE:", JSON.stringify(responseData, null, 2));
 
     if (!response.ok) {
-      console.error("❌ ERROR RESPONSE:", responseData);
-      
-      const errorData = responseData as ErrorResponse;
-      
-      // Format error message từ FastAPI validation errors
-      if (errorData.detail && Array.isArray(errorData.detail)) {
-        const errors = errorData.detail.map((err: ValidationError) => {
-          const field = err.loc ? err.loc.join('.') : 'unknown';
-          return `${field}: ${err.msg}`;
-        }).join(', ');
-        throw new Error(`Validation Error: ${errors}`);
-      }
-      
       throw new Error(
-        typeof errorData.detail === 'string' 
-          ? errorData.detail 
+        typeof responseData.detail === 'string' 
+          ? responseData.detail 
           : 'Tạo đơn hàng thất bại'
       );
     }
 
-    console.log("✅ ORDER CREATED SUCCESSFULLY");
-    return responseData as OrderResponse;
+    return responseData;
     
   } catch (error) {
     console.error("❌ FETCH ERROR:", error);
@@ -117,10 +93,21 @@ export async function createOrder(orderData: OrderCreate): Promise<OrderResponse
 }
 
 /**
- * Lấy danh sách đơn hàng của user hiện tại
+ * Lấy lịch sử đơn hàng của user hiện tại
  */
-export async function getMyOrders(): Promise<OrderResponse[]> {
-  const response = await fetch(`${API_BASE_URL}/api/orders/my-orders`, {
+export async function getMyOrders(
+  skip: number = 0,
+  limit: number = 20,
+  statusFilter?: string
+): Promise<UserOrderHistoryResponse> {
+  const params = new URLSearchParams();
+  params.append('skip', skip.toString());
+  params.append('limit', limit.toString());
+  if (statusFilter) params.append('status_filter', statusFilter);
+
+  const url = `${API_BASE_URL}/api/orders/my-orders?${params.toString()}`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -153,7 +140,7 @@ export async function getOrderDetail(orderId: string): Promise<OrderResponse> {
 /**
  * Hủy đơn hàng
  */
-export async function cancelOrder(orderId: string): Promise<OrderResponse> {
+export async function cancelOrder(orderId: string): Promise<{ message: string; order_id: string; order_status: string }> {
   const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/cancel`, {
     method: 'PUT',
     headers: getAuthHeaders(),

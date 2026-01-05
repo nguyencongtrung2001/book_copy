@@ -1,8 +1,8 @@
-# backend/app/schemas/order.py
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
-from decimal import Decimal
-from datetime import datetime
+# backend/app/routers/order.py (Updated)
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, func
+from typing import List
 
 
 class OrderItemCreate(BaseModel):
@@ -14,11 +14,7 @@ class OrderItemCreate(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    """
-    Schema để tạo đơn hàng mới
-    ⚠️ QUAN TRỌNG: user_id sẽ được backend tự động gán từ token
-    Frontend KHÔNG cần gửi user_id
-    """
+    """Schema để tạo đơn hàng mới"""
     shipping_address: str = Field(..., min_length=5, description="Địa chỉ giao hàng")
     payment_method_id: str = Field(..., description="ID phương thức thanh toán")
     voucher_code: Optional[str] = Field(None, description="Mã giảm giá (nếu có)")
@@ -36,12 +32,22 @@ class OrderCreate(BaseModel):
         return v
 
 
+class BookInOrderDetail(BaseModel):
+    """Thông tin sách trong chi tiết đơn hàng"""
+    book_id: str
+    title: str
+    cover_image_url: Optional[str] = None
+    
+    model_config = {"from_attributes": True}
+
+
 class OrderDetailResponse(BaseModel):
-    """Schema response cho order detail"""
+    """Schema response cho order detail với thông tin sách"""
     detail_id: int
     book_id: str
     quantity: int
-    unit_price: float  # Changed from Decimal to float for JSON serialization
+    unit_price: float
+    book: Optional[BookInOrderDetail] = None  # Thêm thông tin sách
 
     model_config = {"from_attributes": True}
 
@@ -55,18 +61,24 @@ class OrderStatusResponse(BaseModel):
 
 
 class OrderResponse(BaseModel):
-    """
-    Schema response cho order
-    Note: order_status được tính từ relationship status.status_name
-    """
+    """Schema response cho order với đầy đủ thông tin"""
     order_id: str
     user_id: str
-    total_amount: float  # Changed from Decimal to float
+    total_amount: float
     status_id: str
-    order_status: str  # ✅ Tên trạng thái (processing, confirmed, etc.)
+    order_status: str
     shipping_address: str
     payment_method_id: Optional[str]
-    created_at: str  # Changed from datetime to str (ISO format)
+    payment_method_name: Optional[str] = None  # Tên phương thức thanh toán
+    created_at: str
     order_details: List[OrderDetailResponse]
 
+    model_config = {"from_attributes": True}
+
+
+class UserOrderHistoryResponse(BaseModel):
+    """Schema cho lịch sử đơn hàng của user"""
+    total: int
+    orders: List[OrderResponse]
+    
     model_config = {"from_attributes": True}
