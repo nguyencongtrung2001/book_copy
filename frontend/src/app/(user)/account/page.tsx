@@ -1,6 +1,8 @@
+// frontend/src/app/(user)/account/page.tsx
+
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -51,8 +53,8 @@ export default function UserProfilePage() {
     }
   }, [user]);
 
-  // Load orders
-  const loadOrders = async () => {
+  // Load orders - Memoize với useCallback để tránh ESLint warning và re-render không cần
+  const loadOrders = useCallback(async () => {
     try {
       setOrdersLoading(true);
       const response = await getMyOrders(0, 20, statusFilter || undefined);
@@ -63,11 +65,11 @@ export default function UserProfilePage() {
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [statusFilter]);  // Dependency: statusFilter
 
   useEffect(() => {
     loadOrders();
-  }, [statusFilter]);
+  }, [loadOrders]);  // Bây giờ depend vào loadOrders (đã memoized), an toàn không infinite loop
 
   const handleUpdateInfo = async () => {
     setLoading(true);
@@ -277,8 +279,8 @@ export default function UserProfilePage() {
             </div>
 
             {/* Order Items */}
-            <div className="max-h-100 overflow-y-auto px-2">
-              {selectedOrder.order_details.map((item, idx) => (
+            <div className="max-h-96 overflow-y-auto px-2">
+              {selectedOrder.order_details?.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-4 py-3 border-b border-slate-50 last:border-0">
                   <div className="relative w-12 h-16 shrink-0">
                     <Image 
@@ -293,9 +295,9 @@ export default function UserProfilePage() {
                     <p className="font-bold text-slate-700 truncate text-sm">{item.book?.title || "N/A"}</p>
                     <p className="text-xs text-slate-400">Số lượng: {item.quantity}</p>
                   </div>
-                  <div className="text-emerald-600 font-bold text-sm">{(item.quantity * item.unit_price).toLocaleString()}đ</div>
+                  <div className="text-emerald-600 font-bold text-sm">{(item.quantity * Number(item.unit_price)).toLocaleString()}đ</div>
                 </div>
-              ))}
+              )) || []}
             </div>
 
             {/* Total */}
