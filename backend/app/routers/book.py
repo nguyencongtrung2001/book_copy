@@ -18,6 +18,7 @@ def get_books(
         query = query.filter(Book.sold_quantity >= 150)
     elif filter == "Xu hướng":
         query = query.order_by(Book.created_at.desc())
+    
     return query.all()
 
 

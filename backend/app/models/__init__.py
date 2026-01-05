@@ -3,6 +3,7 @@ from .user import User
 from .category import Category
 from .book import Book
 from .payment_method import PaymentMethod
+from .order_status import OrderStatus
 from .order import Order
 from .order_detail import OrderDetail
 from .review import Review

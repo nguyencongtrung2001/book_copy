@@ -8,20 +8,35 @@ import {TestimonialCard} from '@/components/home/Testimonials'
 import {StatItem} from '@/components/home/Stats'
 import {data} from '@/data/data'
 import { useEffect, useState } from "react";
-import { fetchBookList, BookList } from "@/api/book";
-
-
-
+import { fetchBookList, BookList, BookFilter } from "@/api/book";
 
 export default function HomePage() {
- const [books, setBooks] = useState<BookList[]>([]);
+  const [books, setBooks] = useState<BookList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<BookFilter>("Tất cả");
 
+  // Load books based on filter
+  const loadBooks = async (filter: BookFilter) => {
+    try {
+      setLoading(true);
+      const data = await fetchBookList(filter);
+      setBooks(data);
+    } catch (error) {
+      console.error("Error loading books:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
   useEffect(() => {
-    fetchBookList()
-      .then(setBooks)
-      .finally(() => setLoading(false));
-  }, []);
+    loadBooks(activeFilter);
+  }, [activeFilter]);
+
+  // Handle filter change
+  const handleFilterChange = (filter: BookFilter) => {
+    setActiveFilter(filter);
+  };
 
   return (
     <main>
@@ -35,10 +50,15 @@ export default function HomePage() {
             
             {/* Tabs Filter */}
             <div className="flex bg-white p-1 rounded-full shadow-sm">
-              {['Tất cả', 'Sách Hot', 'Xu hướng'].map((tab, idx) => (
+              {(['Tất cả', 'Sách hot', 'Xu hướng'] as BookFilter[]).map((tab) => (
                 <button 
                   key={tab} 
-                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${idx === 0 ? 'bg-[#0F9D58] text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                  onClick={() => handleFilterChange(tab)}
+                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+                    activeFilter === tab 
+                      ? 'bg-[#0F9D58] text-white' 
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {tab}
                 </button>
@@ -48,23 +68,25 @@ export default function HomePage() {
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {loading ? (
-  <p className="text-center col-span-full text-slate-500">
-    Đang tải sách...
-  </p>
-) : (
-  books.map((book) => (
-    <BookCard
-  key={book.book_id}
-  id={book.book_id}
-  title={book.title}
-  price={book.price}
-  image={book.cover_image_url} // VD: "autumn.png"
-  stock_quantity={book.stock_quantity}
-/>
-
-  ))
-)}
-
+              <p className="text-center col-span-full text-slate-500">
+                Đang tải sách...
+              </p>
+            ) : books.length > 0 ? (
+              books.map((book) => (
+                <BookCard
+                  key={book.book_id}
+                  id={book.book_id}
+                  title={book.title}
+                  price={book.price}
+                  image={book.cover_image_url}
+                  stock_quantity={book.stock_quantity}
+                />
+              ))
+            ) : (
+              <p className="text-center col-span-full text-slate-500">
+                Không tìm thấy sách nào.
+              </p>
+            )}
           </div>
         </div>
 
@@ -91,19 +113,15 @@ export default function HomePage() {
             <h4 className="text-[#0F9D58] font-bold uppercase mb-2">Đánh giá</h4>
             <h2 className="text-3xl font-bold text-slate-800 mb-12 font-quicksand">Khách hàng nói gì về chúng tôi!</h2>
             <div className="grid md:grid-cols-3 gap-8">
-               {
-  data.map((item) => (
-    <TestimonialCard
-      key={item.id}
-      name={item.name}
-      role={item.work}
-      content={item.content}
-      image={item.image}
-    />
-  ))
-}
-
-               
+               {data.map((item) => (
+                  <TestimonialCard
+                    key={item.id}
+                    name={item.name}
+                    role={item.work}
+                    content={item.content}
+                    image={item.image}
+                  />
+               ))}
             </div>
          </div>
       </section>
@@ -111,4 +129,3 @@ export default function HomePage() {
     </main>
   );
 }
-

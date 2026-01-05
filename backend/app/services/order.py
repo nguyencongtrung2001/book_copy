@@ -11,25 +11,23 @@ from app.models.book import Book
 from app.models.discount import Discount
 from app.models.discount_application import DiscountApplication
 from app.models.payment_method import PaymentMethod
+from app.models.order_status import OrderStatus
 from app.schemas.order import OrderCreate
 
 
 def generate_order_id(db: Session) -> str:
     """Generate unique order ID"""
-    # Get last order
     stmt = select(Order).order_by(Order.created_at.desc())
     last_order = db.execute(stmt).scalars().first()
     
     if not last_order:
         return "ORD00001"
     
-    # Extract number from last order_id
     try:
         last_num = int(last_order.order_id[3:])
         new_num = last_num + 1
         return f"ORD{new_num:05d}"
     except:
-        # Fallback to UUID if parsing fails
         return f"ORD{str(uuid.uuid4().int)[:8]}"
 
 
@@ -53,7 +51,6 @@ def create_order(db: Session, order_data: OrderCreate):
         order_items_to_save = []
         
         for item in order_data.items:
-            # Get book
             stmt = select(Book).where(Book.book_id == item.book_id)
             book = db.execute(stmt).scalar_one_or_none()
             
@@ -63,18 +60,15 @@ def create_order(db: Session, order_data: OrderCreate):
                     detail=f"Sách {item.book_id} không tồn tại"
                 )
             
-            # Check stock
             if book.stock_quantity < item.quantity:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Không đủ hàng cho sách '{book.title}'. Còn lại: {book.stock_quantity}"
                 )
             
-            # Calculate item total
             item_total = Decimal(str(book.price)) * item.quantity
             subtotal += item_total
             
-            # Prepare order detail
             order_items_to_save.append({
                 'book': book,
                 'quantity': item.quantity,
@@ -105,25 +99,34 @@ def create_order(db: Session, order_data: OrderCreate):
         # 4. Generate order ID
         new_order_id = generate_order_id(db)
         
-        # 5. Create order
+        # 5. Get default status (processing)
+        stmt = select(OrderStatus).where(OrderStatus.status_name == 'processing')
+        default_status = db.execute(stmt).scalar_one_or_none()
+        
+        if not default_status:
+            raise HTTPException(
+                status_code=500,
+                detail="Lỗi hệ thống: Không tìm thấy trạng thái đơn hàng mặc định"
+            )
+        
+        # 6. Create order
         new_order = Order(
             order_id=new_order_id,
             user_id=order_data.user_id,
             total_amount=total_amount,
             shipping_address=order_data.shipping_address,
             payment_method_id=order_data.payment_method_id,
-            order_status='processing',
+            status_id=default_status.status_id,
             created_at=datetime.utcnow()
         )
         
         db.add(new_order)
-        db.flush()  # Get order_id without committing
+        db.flush()
         
-        # 6. Create order details and update stock
+        # 7. Create order details and update stock
         for item_data in order_items_to_save:
             book = item_data['book']
             
-            # Create order detail
             order_detail = OrderDetail(
                 order_id=new_order_id,
                 book_id=book.book_id,
@@ -132,11 +135,10 @@ def create_order(db: Session, order_data: OrderCreate):
             )
             db.add(order_detail)
             
-            # Update stock and sold quantity
             book.stock_quantity -= item_data['quantity']
             book.sold_quantity += item_data['quantity']
         
-        # 7. Apply discount if exists
+        # 8. Apply discount if exists
         if discount_id:
             discount_app = DiscountApplication(
                 order_id=new_order_id,
@@ -144,7 +146,7 @@ def create_order(db: Session, order_data: OrderCreate):
             )
             db.add(discount_app)
         
-        # 8. Commit transaction
+        # 9. Commit transaction
         db.commit()
         db.refresh(new_order)
         
@@ -185,18 +187,20 @@ def get_order_by_id(db: Session, order_id: str):
     return order
 
 
-def update_order_status(db: Session, order_id: str, new_status: str):
-    """Update order status"""
-    valid_statuses = ['processing', 'confirmed', 'shipping', 'delivered', 'cancelled']
+def update_order_status(db: Session, order_id: str, new_status_name: str):
+    """Update order status by status name"""
+    # Validate status exists
+    stmt = select(OrderStatus).where(OrderStatus.status_name == new_status_name)
+    status = db.execute(stmt).scalar_one_or_none()
     
-    if new_status not in valid_statuses:
+    if not status:
         raise HTTPException(
             status_code=400,
             detail="Trạng thái không hợp lệ"
         )
     
     order = get_order_by_id(db, order_id)
-    order.order_status = new_status
+    order.status_id = status.status_id
     
     db.commit()
     db.refresh(order)
@@ -209,7 +213,6 @@ def cancel_order(db: Session, order_id: str, user_id: str):
     try:
         order = get_order_by_id(db, order_id)
         
-        # Verify ownership
         if order.user_id != user_id:
             raise HTTPException(
                 status_code=403,
@@ -217,7 +220,7 @@ def cancel_order(db: Session, order_id: str, user_id: str):
             )
         
         # Check if can cancel
-        if order.order_status in ['delivered', 'cancelled']:
+        if order.status.status_name in ['completed', 'cancelled']:
             raise HTTPException(
                 status_code=400,
                 detail="Không thể hủy đơn hàng đã giao hoặc đã hủy"
@@ -229,8 +232,10 @@ def cancel_order(db: Session, order_id: str, user_id: str):
             book.stock_quantity += detail.quantity
             book.sold_quantity -= detail.quantity
         
-        # Update status
-        order.order_status = 'cancelled'
+        # Update status to cancelled
+        stmt = select(OrderStatus).where(OrderStatus.status_name == 'cancelled')
+        cancelled_status = db.execute(stmt).scalar_one()
+        order.status_id = cancelled_status.status_id
         
         db.commit()
         db.refresh(order)

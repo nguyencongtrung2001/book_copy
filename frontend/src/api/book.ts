@@ -8,7 +8,6 @@ export interface BookList {
     cover_image_url: string
 }
 
-
 export interface BookDetail{
     book_id: string
     title: string
@@ -23,8 +22,14 @@ export interface BookDetail{
     category_name: string | null
 }
 
-export async function fetchBookList(): Promise<BookList[]> {
-    const response = await fetch(`${API_BASE_URL}/api/books`, {
+// Thêm type cho filter
+export type BookFilter = "Tất cả" | "Sách hot" | "Xu hướng";
+
+export async function fetchBookList(filter: BookFilter = "Tất cả"): Promise<BookList[]> {
+    const params = new URLSearchParams();
+    params.append('filter', filter);
+    
+    const response = await fetch(`${API_BASE_URL}/api/books?${params.toString()}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -38,7 +43,6 @@ export async function fetchBookList(): Promise<BookList[]> {
 
     return response.json()
 }
-
 
 export async function fetchBookDetail(book_id: string): Promise<BookDetail> {
     const response = await fetch(`${API_BASE_URL}/api/books/${book_id}`, {

@@ -24,8 +24,6 @@ class OrderCreate(BaseModel):
     voucher_code: Optional[str] = Field(None, description="Mã giảm giá (nếu có)")
     items: List[OrderItemCreate] = Field(..., min_items=1, description="Danh sách sản phẩm")
     
-    # ✅ FIX: Đặt user_id là Optional với default None
-    # Backend sẽ override giá trị này từ current_user
     user_id: Optional[str] = Field(None, description="User ID (tự động từ token)")
     
     model_config = {"from_attributes": True}
@@ -48,12 +46,24 @@ class OrderDetailResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OrderStatusResponse(BaseModel):
+    """Schema cho thông tin trạng thái"""
+    status_id: str
+    status_name: str
+    
+    model_config = {"from_attributes": True}
+
+
 class OrderResponse(BaseModel):
-    """Schema response cho order"""
+    """
+    Schema response cho order
+    Note: order_status được tính từ relationship status.status_name
+    """
     order_id: str
     user_id: str
     total_amount: Decimal
-    order_status: str
+    status_id: str
+    order_status: str  # Tên trạng thái (processing, confirmed, etc.)
     shipping_address: str
     payment_method_id: Optional[str]
     created_at: datetime
