@@ -32,6 +32,7 @@ async def create_order(
     print("=" * 60)
     
     try:
+        # Tự động gán user_id từ token
         order_data.user_id = current_user.user_id
         
         print(f"✅ Order data after user_id assignment:")
@@ -41,29 +42,43 @@ async def create_order(
         print(f"   voucher_code: {order_data.voucher_code}")
         print(f"   items: {order_data.items}")
         
+        # Tạo đơn hàng
         result = order_service.create_order(db, order_data)
         
         print("✅ ORDER CREATED SUCCESSFULLY!")
         
-        # Manually construct response with order_status
+        # ✅ Manually construct response với đầy đủ thông tin
         return {
             "order_id": result.order_id,
             "user_id": result.user_id,
-            "total_amount": result.total_amount,
+            "total_amount": float(result.total_amount),
             "status_id": result.status_id,
-            "order_status": result.status.status_name if result.status else "unknown",
+            "order_status": result.status.status_name if result.status else "processing",
             "shipping_address": result.shipping_address,
             "payment_method_id": result.payment_method_id,
-            "created_at": result.created_at,
-            "order_details": result.order_details
+            "created_at": result.created_at.isoformat(),
+            "order_details": [
+                {
+                    "detail_id": detail.detail_id,
+                    "book_id": detail.book_id,
+                    "quantity": detail.quantity,
+                    "unit_price": float(detail.unit_price)
+                }
+                for detail in result.order_details
+            ]
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"❌ ERROR creating order: {str(e)}")
         print(f"   Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
-        raise
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 
 @router.get("/my-orders")
@@ -79,13 +94,21 @@ async def get_my_orders(
         {
             "order_id": order.order_id,
             "user_id": order.user_id,
-            "total_amount": order.total_amount,
+            "total_amount": float(order.total_amount),
             "status_id": order.status_id,
             "order_status": order.status.status_name if order.status else "unknown",
             "shipping_address": order.shipping_address,
             "payment_method_id": order.payment_method_id,
-            "created_at": order.created_at,
-            "order_details": order.order_details
+            "created_at": order.created_at.isoformat(),
+            "order_details": [
+                {
+                    "detail_id": detail.detail_id,
+                    "book_id": detail.book_id,
+                    "quantity": detail.quantity,
+                    "unit_price": float(detail.unit_price)
+                }
+                for detail in order.order_details
+            ]
         }
         for order in orders
     ]
@@ -109,13 +132,21 @@ async def get_order_detail(
     return {
         "order_id": order.order_id,
         "user_id": order.user_id,
-        "total_amount": order.total_amount,
+        "total_amount": float(order.total_amount),
         "status_id": order.status_id,
         "order_status": order.status.status_name if order.status else "unknown",
         "shipping_address": order.shipping_address,
         "payment_method_id": order.payment_method_id,
-        "created_at": order.created_at,
-        "order_details": order.order_details
+        "created_at": order.created_at.isoformat(),
+        "order_details": [
+            {
+                "detail_id": detail.detail_id,
+                "book_id": detail.book_id,
+                "quantity": detail.quantity,
+                "unit_price": float(detail.unit_price)
+            }
+            for detail in order.order_details
+        ]
     }
 
 
@@ -131,13 +162,21 @@ async def cancel_order(
     return {
         "order_id": order.order_id,
         "user_id": order.user_id,
-        "total_amount": order.total_amount,
+        "total_amount": float(order.total_amount),
         "status_id": order.status_id,
         "order_status": order.status.status_name if order.status else "unknown",
         "shipping_address": order.shipping_address,
         "payment_method_id": order.payment_method_id,
-        "created_at": order.created_at,
-        "order_details": order.order_details
+        "created_at": order.created_at.isoformat(),
+        "order_details": [
+            {
+                "detail_id": detail.detail_id,
+                "book_id": detail.book_id,
+                "quantity": detail.quantity,
+                "unit_price": float(detail.unit_price)
+            }
+            for detail in order.order_details
+        ]
     }
 
 

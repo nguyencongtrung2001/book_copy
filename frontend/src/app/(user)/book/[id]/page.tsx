@@ -502,40 +502,64 @@ useEffect(() => {
         </div>
 
         {showModal && (
-          <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-            onClick={closeModal}
-          >
-            <div 
-              className="bg-white rounded-3xl p-8 text-center max-w-md w-full animate-scale-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="w-20 h-20 bg-[#0F9D58]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle size={48} className="text-[#0F9D58]" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Đặt hàng thành công!</h3>
-              <p className="text-gray-600 mb-6">
-                Đơn hàng của bạn đã được tiếp nhận. Bạn có thể xem chi tiết đơn hàng trong mục &quot;Đơn hàng của tôi&quot;
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => router.push('/')}
-                  className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
-                >
-                  Về trang chủ
-                </button>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 bg-[#0F9D58] text-white px-6 py-3 rounded-full font-bold hover:bg-[#0B8043] transition-all"
-                >
-                  Xem đơn hàng
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+  <div 
+    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300"
+    onClick={closeModal}
+  >
+    <div 
+      className="bg-white rounded-3xl p-8 text-center max-w-md w-full animate-in zoom-in-95 duration-300 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Success Icon Animation */}
+      <div className="relative mb-6">
+        <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto animate-bounce-slow">
+          <CheckCircle size={56} className="text-green-500" />
+        </div>
+        {/* Confetti effect */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="confetti-1 absolute w-2 h-2 bg-yellow-400 rounded-full animate-confetti"></div>
+          <div className="confetti-2 absolute w-2 h-2 bg-blue-400 rounded-full animate-confetti"></div>
+          <div className="confetti-3 absolute w-2 h-2 bg-red-400 rounded-full animate-confetti"></div>
+          <div className="confetti-4 absolute w-2 h-2 bg-purple-400 rounded-full animate-confetti"></div>
+        </div>
+      </div>
+
+      <h3 className="text-2xl font-bold text-gray-800 mb-3">
+        🎉 Đặt hàng thành công!
+      </h3>
+      
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+        <p className="text-sm text-green-800 font-medium">
+          ✓ Đơn hàng của bạn đã được tiếp nhận
+        </p>
+        <p className="text-xs text-green-600 mt-1">
+          Chúng tôi sẽ xử lý và giao hàng trong thời gian sớm nhất
+        </p>
+      </div>
+
+      <p className="text-gray-600 mb-6 text-sm">
+        Bạn có thể theo dõi đơn hàng tại mục <strong className="text-[#0F9D58]">&quot;Đơn hàng của tôi&quot;</strong>
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
+        >
+          Về trang chủ
+        </button>
+        <button
+          type="button"
+          onClick={closeModal}
+          className="flex-1 bg-[#0F9D58] text-white px-6 py-3 rounded-full font-bold hover:bg-[#0B8043] transition-all shadow-lg"
+        >
+          Xem đơn hàng
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
       <Footer />
 

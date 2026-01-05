@@ -41,7 +41,7 @@ class OrderDetailResponse(BaseModel):
     detail_id: int
     book_id: str
     quantity: int
-    unit_price: Decimal
+    unit_price: float  # Changed from Decimal to float for JSON serialization
 
     model_config = {"from_attributes": True}
 
@@ -61,12 +61,12 @@ class OrderResponse(BaseModel):
     """
     order_id: str
     user_id: str
-    total_amount: Decimal
+    total_amount: float  # Changed from Decimal to float
     status_id: str
-    order_status: str  # Tên trạng thái (processing, confirmed, etc.)
+    order_status: str  # ✅ Tên trạng thái (processing, confirmed, etc.)
     shipping_address: str
     payment_method_id: Optional[str]
-    created_at: datetime
+    created_at: str  # Changed from datetime to str (ISO format)
     order_details: List[OrderDetailResponse]
 
     model_config = {"from_attributes": True}
