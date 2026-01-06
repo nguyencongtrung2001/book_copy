@@ -59,31 +59,34 @@ async def create_order(
         )
 
 
+# backend/app/routers/order.py - Sửa phần get_my_orders
+
 @router.get("/my-orders", response_model=UserOrderHistoryResponse)
 async def get_my_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     status_filter: Optional[str] = Query(None, description="Lọc theo trạng thái"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)  # ← FIX: Đảm bảo có dependency này
 ):
     """Lấy lịch sử đơn hàng của user hiện tại với phân trang"""
     try:
-        # Build query
+        # Build query - FIX: Đảm bảo join đúng với order_status
         stmt = select(Order).options(
             joinedload(Order.status),
             joinedload(Order.payment_method),
-            joinedload(Order.order_details).joinedload('book')
+            joinedload(Order.order_details).joinedload(OrderDetail.book)  # ← FIX: Thêm OrderDetail import
         ).where(Order.user_id == current_user.user_id)
         
         # Filter by status if provided
         if status_filter:
-            stmt = stmt.join(Order.status).where(Order.status.has(status_name=status_filter))
+            stmt = stmt.where(Order.status.has(status_name=status_filter))
         
         # Count total
         count_stmt = select(func.count()).select_from(Order).where(Order.user_id == current_user.user_id)
         if status_filter:
-            count_stmt = count_stmt.join(Order.status).where(Order.status.has(status_name=status_filter))
+            # FIX: Join với OrderStatus table
+            count_stmt = count_stmt.join(OrderStatus).where(OrderStatus.status_name == status_filter)
         
         total = db.execute(count_stmt).scalar()
         
@@ -95,7 +98,7 @@ async def get_my_orders(
         # Format response
         orders_data = []
         for order in orders:
-            orders_data.append({
+            order_dict = {
                 "order_id": order.order_id,
                 "user_id": order.user_id,
                 "total_amount": float(order.total_amount),
@@ -105,25 +108,36 @@ async def get_my_orders(
                 "payment_method_id": order.payment_method_id,
                 "payment_method_name": order.payment_method.method_name if order.payment_method else None,
                 "created_at": order.created_at.isoformat(),
-                "order_details": [
-                    {
-                        "detail_id": detail.detail_id,
-                        "book_id": detail.book_id,
-                        "quantity": detail.quantity,
-                        "unit_price": float(detail.unit_price),
-                        "book": {
-                            "book_id": detail.book.book_id,
-                            "title": detail.book.title,
-                            "cover_image_url": detail.book.cover_image_url
-                        } if detail.book else None
+                "order_details": []
+            }
+            
+            # Add order details
+            for detail in order.order_details:
+                detail_dict = {
+                    "detail_id": detail.detail_id,
+                    "book_id": detail.book_id,
+                    "quantity": detail.quantity,
+                    "unit_price": float(detail.unit_price),
+                    "book": None
+                }
+                
+                if detail.book:
+                    detail_dict["book"] = {
+                        "book_id": detail.book.book_id,
+                        "title": detail.book.title,
+                        "cover_image_url": detail.book.cover_image_url
                     }
-                    for detail in order.order_details
-                ]
-            })
+                
+                order_dict["order_details"].append(detail_dict)
+            
+            orders_data.append(order_dict)
         
         return {"total": total, "orders": orders_data}
         
     except Exception as e:
+        print(f"❌ ERROR in get_my_orders: {str(e)}")  # Debug log
+        import traceback
+        traceback.print_exc()  # Print full traceback
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi lấy lịch sử đơn hàng: {str(e)}"

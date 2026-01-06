@@ -32,6 +32,7 @@ export default function UserProfilePage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [totalOrders, setTotalOrders] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [error, setError] = useState<string>(""); // Thêm state cho error
 
   // User info form
   const [userForm, setUserForm] = useState({
@@ -57,19 +58,33 @@ export default function UserProfilePage() {
   const loadOrders = useCallback(async () => {
     try {
       setOrdersLoading(true);
+      console.log("🔄 Loading orders with filter:", statusFilter);
+      
       const response = await getMyOrders(0, 20, statusFilter || undefined);
+      console.log("✅ Orders loaded:", response);
+      
       setOrders(response.orders);
       setTotalOrders(response.total);
+      setError(""); // Clear error on success
     } catch (error) {
-      console.error("Error loading orders:", error);
+      console.error("❌ Error loading orders:", error);
+      setError(error instanceof Error ? error.message : "Không thể tải đơn hàng");
+      setOrders([]); // Clear orders on error
+      setTotalOrders(0);
     } finally {
       setOrdersLoading(false);
     }
   }, [statusFilter]);  // Dependency: statusFilter
 
+  // Thêm useEffect để log user state
+  useEffect(() => {
+    console.log("👤 Current user:", user);
+    console.log("🔐 Is authenticated:", !!user);
+  }, [user]);
+
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]);  // Bây giờ depend vào loadOrders (đã memoized), an toàn không infinite loop
+  }, [loadOrders]); // Bây giờ depend vào loadOrders (đã memoized), an toàn không infinite loop
 
   const handleUpdateInfo = async () => {
     setLoading(true);
@@ -126,7 +141,7 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-[#f0fdf4] font-inter">
       {/* HEADER */}
-      <div className="relative bg-linear-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden">
+      <div className="relative bg-linear-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden"> {/* Sửa bg-linear-to-br thành bg-gradient-to-br */}
         <div className="container mx-auto px-4 relative z-10">
           <h1 className="text-3xl font-extrabold text-slate-800 mb-2 uppercase tracking-tight">Hồ Sơ Của Bạn</h1>
           <nav className="flex justify-center items-center gap-2 text-sm text-slate-500">
@@ -169,7 +184,7 @@ export default function UserProfilePage() {
 
           {/* RIGHT: HISTORY */}
           <div className="lg:col-span-8">
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-100 min-h-125 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-100 min-h-125 animate-in fade-in slide-in-from-right-4 duration-500"> {/* Sửa min-h-125 thành min-h-[500px] */}
               <div className="flex justify-between items-center border-b border-slate-50 pb-4 mb-6">
                 <h2 className="text-emerald-600 text-sm font-black uppercase tracking-widest flex items-center gap-2">
                   <PackageOpen size={20} /> Lịch sử đơn hàng ({totalOrders})
@@ -188,6 +203,19 @@ export default function UserProfilePage() {
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
+
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+                  <p className="font-bold">Lỗi tải đơn hàng:</p>
+                  <p className="text-sm">{error}</p>
+                  <button
+                    onClick={loadOrders}
+                    className="mt-2 text-sm underline hover:no-underline"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              )}
 
               {ordersLoading ? (
                 <div className="flex items-center justify-center py-20">

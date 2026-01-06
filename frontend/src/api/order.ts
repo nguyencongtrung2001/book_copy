@@ -95,6 +95,8 @@ export async function createOrder(orderData: OrderCreate): Promise<OrderResponse
 /**
  * Lấy lịch sử đơn hàng của user hiện tại
  */
+// frontend/src/api/order.ts - Sửa getMyOrders function
+
 export async function getMyOrders(
   skip: number = 0,
   limit: number = 20,
@@ -107,17 +109,30 @@ export async function getMyOrders(
 
   const url = `${API_BASE_URL}/api/orders/my-orders?${params.toString()}`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
+  console.log("🔍 Fetching orders from:", url);
+  console.log("🔑 Token:", getAuthToken() ? "✅ Present" : "❌ Missing");
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || 'Lấy danh sách đơn hàng thất bại');
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    console.log("📡 Response status:", response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("❌ Error response:", errorData);
+      throw new Error(errorData.detail || 'Lấy danh sách đơn hàng thất bại');
+    }
+
+    const data = await response.json();
+    console.log("✅ Orders data:", data);
+    return data;
+  } catch (error) {
+    console.error("❌ Fetch error:", error);
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
