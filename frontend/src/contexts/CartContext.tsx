@@ -1,7 +1,7 @@
 // frontend/src/contexts/CartContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 export interface CartItem {
   book_id: string;
@@ -28,9 +28,8 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const CART_STORAGE_KEY = 'ute_bookshop_cart';
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // ✅ FIX: Lazy initialization để tránh setState trong useEffect
+  // ✅ Lazy initialization - Load từ localStorage 1 lần duy nhất khi khởi tạo
   const [items, setItems] = useState<CartItem[]>(() => {
-    // Chỉ chạy 1 lần khi khởi tạo component
     if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem(CART_STORAGE_KEY);
       if (savedCart) {
@@ -45,19 +44,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
   
-  const [isLoaded, setIsLoaded] = useState(false);
+  // ✅ useRef để track lần render đầu tiên (không trigger re-render)
+  const isInitialMount = useRef(true);
 
-  // Đánh dấu đã load xong (chỉ để tracking, không thay đổi items)
+  // ✅ Lưu cart vào localStorage mỗi khi items thay đổi (bỏ qua lần đầu)
   useEffect(() => {
-    setIsLoaded(true);
-  }, []);
-
-  // Lưu cart vào localStorage mỗi khi items thay đổi
-  useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined') {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    if (typeof window !== 'undefined') {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     }
-  }, [items, isLoaded]);
+  }, [items]);
 
   // Tính tổng số lượng items
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
