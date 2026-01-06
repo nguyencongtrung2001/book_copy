@@ -4,14 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext'; // ✅ ADD THIS
 import { getNotifications } from '@/api/contact';
 
 const Header = () => {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const { itemCount } = useCart(); // ✅ ADD THIS - Lấy số lượng giỏ hàng
   const [isScrolled, setIsScrolled] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-  const cartCount = 3;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -47,7 +48,6 @@ const Header = () => {
       ? "bg-[#0d9488] text-white shadow-md" 
       : "text-[#1e293b] hover:bg-[#ccfbf1] hover:text-[#0d9488]";
 
-  // ✅ GET USER INITIAL - AN TOÀN 100%
   const getInitial = () => {
     if (!user) return '?';
     if (!user.fullname) return '?';
@@ -56,14 +56,12 @@ const Header = () => {
     return user.fullname[0].toUpperCase();
   };
 
-  // ✅ GET USER NAME - AN TOÀN 100%
   const getDisplayName = () => {
     if (!user) return 'User';
     if (!user.fullname) return 'User';
     return user.fullname;
   };
 
-  // ✅ GET USER ROLE - AN TOÀN 100%
   const getDisplayRole = () => {
     if (!user) return 'customer';
     if (!user.role) return 'customer';
@@ -92,9 +90,9 @@ const Header = () => {
             <Link href="/cart" className={`px-4 py-2 rounded-full font-semibold flex items-center transition-all ${isActive('/cart')}`}>
               <i className="fas fa-shopping-cart mr-2"></i>
               Giỏ hàng 
-              {cartCount > 0 && (
+              {itemCount > 0 && (
                 <span className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                  {cartCount}
+                  {itemCount}
                 </span>
               )}
             </Link>
