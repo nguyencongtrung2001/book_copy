@@ -83,10 +83,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshUser = async () => {
-    const verifiedUser = await verifyToken();
-    if (verifiedUser) {
-      setUser(verifiedUser);
-    } else {
+    console.log("🔄 Refreshing user...");
+    try {
+      const verifiedUser = await verifyToken();
+      if (verifiedUser) {
+        console.log("✅ User refreshed:", verifiedUser);
+        setUser(verifiedUser);
+        // Cập nhật localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user_info', JSON.stringify(verifiedUser));
+        }
+      } else {
+        console.log("⚠️ Cannot verify user, logging out");
+        logout();
+      }
+    } catch (err) {
+      console.error("❌ Refresh user error:", err);
       logout();
     }
   };

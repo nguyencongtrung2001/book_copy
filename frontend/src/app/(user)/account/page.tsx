@@ -1,5 +1,3 @@
-// frontend/src/app/(user)/account/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -18,13 +16,15 @@ import {
   Loader2,
   Calendar,
   CreditCard,
-  MapPin
+  MapPin,
+  CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getMyOrders, cancelOrder, OrderResponse } from "@/api/order";
+import { updateProfile, ProfileUpdateData } from "@/api/profile";
 
 export default function UserProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeModal, setActiveModal] = useState<"detail" | "cancel" | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,7 @@ export default function UserProfilePage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
   // User info form
   const [userForm, setUserForm] = useState({
@@ -59,11 +60,8 @@ export default function UserProfilePage() {
     try {
       setOrdersLoading(true);
       setError("");
-      console.log("🔄 Loading orders with filter:", statusFilter);
       
       const response = await getMyOrders(0, 20, statusFilter || undefined);
-      console.log("✅ Orders loaded:", response);
-      
       setOrders(response.orders);
       setTotalOrders(response.total);
     } catch (error) {
@@ -83,10 +81,60 @@ export default function UserProfilePage() {
 
   const handleUpdateInfo = async () => {
     setLoading(true);
-    setTimeout(() => {
+    setError("");
+    setUpdateSuccess(false);
+
+    try {
+      // Chuẩn bị dữ liệu cập nhật
+      const updateData: ProfileUpdateData = {};
+      
+      // Normalize để so sánh: null/undefined/"" -> ""
+      const normalizeValue = (val: string | null | undefined) => val?.trim() || "";
+      
+      // So sánh họ tên
+      if (normalizeValue(userForm.hoTen) !== normalizeValue(user?.fullname)) {
+        updateData.full_name = userForm.hoTen.trim();
+      }
+      
+      // So sánh phone
+      if (normalizeValue(userForm.soDienThoai) !== normalizeValue(user?.phone)) {
+        updateData.phone = userForm.soDienThoai.trim() || undefined;
+      }
+      
+      // So sánh address
+      if (normalizeValue(userForm.diaChi) !== normalizeValue(user?.address)) {
+        updateData.address = userForm.diaChi.trim() || undefined;
+      }
+
+      console.log("📤 Update data:", updateData);
+      console.log("👤 Current user:", { 
+        fullname: user?.fullname, 
+        phone: user?.phone, 
+        address: user?.address 
+      });
+
+      // Kiểm tra có thay đổi không
+      if (Object.keys(updateData).length === 0) {
+        setError("Không có thay đổi nào để cập nhật");
+        setLoading(false);
+        return;
+      }
+
+      // Gọi API
+      const updated = await updateProfile(updateData);
+      console.log("✅ Updated profile:", updated);
+      
+      // Refresh user context
+      await refreshUser();
+      
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    } catch (err) {
+      console.error("❌ Update error:", err);
+      setError(err instanceof Error ? err.message : "Cập nhật thất bại");
+    } finally {
       setLoading(false);
-      alert("Cập nhật thông tin thành công!");
-    }, 1000);
+    }
   };
 
   const handleCancelOrder = async () => {
@@ -136,7 +184,7 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-[#f0fdf4] font-inter">
       {/* HEADER */}
-      <div className="relative bg-linera-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden">
+      <div className="relative bg-linear-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <h1 className="text-3xl font-extrabold text-slate-800 mb-2 uppercase tracking-tight">Hồ Sơ Của Bạn</h1>
           <nav className="flex justify-center items-center gap-2 text-sm text-slate-500">
@@ -160,11 +208,39 @@ export default function UserProfilePage() {
               <h2 className="text-emerald-600 text-sm font-black uppercase tracking-widest border-b border-slate-50 pb-4 mb-6 flex items-center gap-2">
                 <IdCard size={20} /> Thông tin cá nhân
               </h2>
+
+              {/* Success Message */}
+              {updateSuccess && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
+                  <CheckCircle size={16} />
+                  <span>Cập nhật thành công!</span>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-4">
                 <InputGroup label="Họ tên" value={userForm.hoTen} onChange={(v) => setUserForm({...userForm, hoTen: v})} />
-                <InputGroup label="Email" value={userForm.email} onChange={(v) => setUserForm({...userForm, email: v})} />
+                
+                {/* Email (readonly) */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider ml-1">Email (không thể sửa)</label>
+                  <input 
+                    type="text" 
+                    value={userForm.email}
+                    readOnly
+                    className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+                  />
+                </div>
+
                 <InputGroup label="Số điện thoại" value={userForm.soDienThoai} onChange={(v) => setUserForm({...userForm, soDienThoai: v})} />
                 <InputGroup label="Địa chỉ" value={userForm.diaChi} onChange={(v) => setUserForm({...userForm, diaChi: v})} />
+                
                 <button 
                   onClick={handleUpdateInfo}
                   disabled={loading}
@@ -198,19 +274,6 @@ export default function UserProfilePage() {
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
-
-              {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-                  <p className="font-bold">Lỗi tải đơn hàng:</p>
-                  <p className="text-sm">{error}</p>
-                  <button
-                    onClick={loadOrders}
-                    className="mt-2 text-sm underline hover:no-underline"
-                  >
-                    Thử lại
-                  </button>
-                </div>
-              )}
 
               {ordersLoading ? (
                 <div className="flex items-center justify-center py-20">
