@@ -32,7 +32,7 @@ export default function UserProfilePage() {
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [totalOrders, setTotalOrders] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [error, setError] = useState<string>(""); // Thêm state cho error
+  const [error, setError] = useState<string>("");
 
   // User info form
   const [userForm, setUserForm] = useState({
@@ -54,10 +54,11 @@ export default function UserProfilePage() {
     }
   }, [user]);
 
-  // Load orders - Memoize với useCallback để tránh ESLint warning và re-render không cần
+  // Load orders function
   const loadOrders = useCallback(async () => {
     try {
       setOrdersLoading(true);
+      setError("");
       console.log("🔄 Loading orders with filter:", statusFilter);
       
       const response = await getMyOrders(0, 20, statusFilter || undefined);
@@ -65,26 +66,20 @@ export default function UserProfilePage() {
       
       setOrders(response.orders);
       setTotalOrders(response.total);
-      setError(""); // Clear error on success
     } catch (error) {
       console.error("❌ Error loading orders:", error);
       setError(error instanceof Error ? error.message : "Không thể tải đơn hàng");
-      setOrders([]); // Clear orders on error
+      setOrders([]);
       setTotalOrders(0);
     } finally {
       setOrdersLoading(false);
     }
-  }, [statusFilter]);  // Dependency: statusFilter
+  }, [statusFilter]);
 
-  // Thêm useEffect để log user state
-  useEffect(() => {
-    console.log("👤 Current user:", user);
-    console.log("🔐 Is authenticated:", !!user);
-  }, [user]);
-
+  // Load orders on mount and when filter changes
   useEffect(() => {
     loadOrders();
-  }, [loadOrders]); // Bây giờ depend vào loadOrders (đã memoized), an toàn không infinite loop
+  }, [loadOrders]);
 
   const handleUpdateInfo = async () => {
     setLoading(true);
@@ -102,7 +97,7 @@ export default function UserProfilePage() {
       await cancelOrder(selectedOrder.order_id);
       alert("Hủy đơn hàng thành công!");
       setActiveModal(null);
-      loadOrders(); // Reload orders
+      loadOrders();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Hủy đơn hàng thất bại");
     } finally {
@@ -141,7 +136,7 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-[#f0fdf4] font-inter">
       {/* HEADER */}
-      <div className="relative bg-linear-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden"> {/* Sửa bg-linear-to-br thành bg-gradient-to-br */}
+      <div className="relative bg-linera-to-br from-[#d1fae5] to-[#e0f2fe] pt-12 pb-24 text-center overflow-hidden">
         <div className="container mx-auto px-4 relative z-10">
           <h1 className="text-3xl font-extrabold text-slate-800 mb-2 uppercase tracking-tight">Hồ Sơ Của Bạn</h1>
           <nav className="flex justify-center items-center gap-2 text-sm text-slate-500">
@@ -184,7 +179,7 @@ export default function UserProfilePage() {
 
           {/* RIGHT: HISTORY */}
           <div className="lg:col-span-8">
-            <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-100 min-h-125 animate-in fade-in slide-in-from-right-4 duration-500"> {/* Sửa min-h-125 thành min-h-[500px] */}
+            <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-100 min-h-125 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="flex justify-between items-center border-b border-slate-50 pb-4 mb-6">
                 <h2 className="text-emerald-600 text-sm font-black uppercase tracking-widest flex items-center gap-2">
                   <PackageOpen size={20} /> Lịch sử đơn hàng ({totalOrders})

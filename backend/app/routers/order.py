@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.order import Order
+from app.models.order_detail import OrderDetail  # ← FIX: Thêm import này
+from app.models.order_status import OrderStatus  # ← FIX: Thêm import này
 from app.schemas.order import OrderCreate, OrderResponse, UserOrderHistoryResponse
 from app.services import order as order_service
 
@@ -59,33 +61,30 @@ async def create_order(
         )
 
 
-# backend/app/routers/order.py - Sửa phần get_my_orders
-
 @router.get("/my-orders", response_model=UserOrderHistoryResponse)
 async def get_my_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     status_filter: Optional[str] = Query(None, description="Lọc theo trạng thái"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # ← FIX: Đảm bảo có dependency này
+    current_user: User = Depends(get_current_user)
 ):
     """Lấy lịch sử đơn hàng của user hiện tại với phân trang"""
     try:
-        # Build query - FIX: Đảm bảo join đúng với order_status
+        # Build query
         stmt = select(Order).options(
             joinedload(Order.status),
             joinedload(Order.payment_method),
-            joinedload(Order.order_details).joinedload(OrderDetail.book)  # ← FIX: Thêm OrderDetail import
+            joinedload(Order.order_details).joinedload(OrderDetail.book)
         ).where(Order.user_id == current_user.user_id)
         
         # Filter by status if provided
         if status_filter:
-            stmt = stmt.where(Order.status.has(status_name=status_filter))
+            stmt = stmt.join(OrderStatus).where(OrderStatus.status_name == status_filter)
         
         # Count total
         count_stmt = select(func.count()).select_from(Order).where(Order.user_id == current_user.user_id)
         if status_filter:
-            # FIX: Join với OrderStatus table
             count_stmt = count_stmt.join(OrderStatus).where(OrderStatus.status_name == status_filter)
         
         total = db.execute(count_stmt).scalar()
@@ -135,9 +134,9 @@ async def get_my_orders(
         return {"total": total, "orders": orders_data}
         
     except Exception as e:
-        print(f"❌ ERROR in get_my_orders: {str(e)}")  # Debug log
+        print(f"❌ ERROR in get_my_orders: {str(e)}")
         import traceback
-        traceback.print_exc()  # Print full traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi lấy lịch sử đơn hàng: {str(e)}"
@@ -155,7 +154,7 @@ async def get_order_detail(
         stmt = select(Order).options(
             joinedload(Order.status),
             joinedload(Order.payment_method),
-            joinedload(Order.order_details).joinedload('book')
+            joinedload(Order.order_details).joinedload(OrderDetail.book)
         ).where(Order.order_id == order_id)
         
         result = db.execute(stmt)
@@ -242,11 +241,11 @@ async def get_all_orders_admin(
         )
         
         if status_filter:
-            stmt = stmt.join(Order.status).where(Order.status.has(status_name=status_filter))
+            stmt = stmt.join(OrderStatus).where(OrderStatus.status_name == status_filter)
         
         count_stmt = select(func.count()).select_from(Order)
         if status_filter:
-            count_stmt = count_stmt.join(Order.status).where(Order.status.has(status_name=status_filter))
+            count_stmt = count_stmt.join(OrderStatus).where(OrderStatus.status_name == status_filter)
         
         total = db.execute(count_stmt).scalar()
         
