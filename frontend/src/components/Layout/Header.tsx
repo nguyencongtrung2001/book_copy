@@ -11,18 +11,14 @@ const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-
-  // Giả lập số lượng giỏ hàng
   const cartCount = 3;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Load notification count
   useEffect(() => {
     const loadNotificationCount = async () => {
       if (isAuthenticated) {
@@ -35,12 +31,8 @@ const Header = () => {
         }
       }
     };
-
     loadNotificationCount();
-    
-    // Refresh notification count every 5 minutes
     const interval = setInterval(loadNotificationCount, 5 * 60 * 1000);
-    
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
@@ -55,6 +47,29 @@ const Header = () => {
       ? "bg-[#0d9488] text-white shadow-md" 
       : "text-[#1e293b] hover:bg-[#ccfbf1] hover:text-[#0d9488]";
 
+  // ✅ GET USER INITIAL - AN TOÀN 100%
+  const getInitial = () => {
+    if (!user) return '?';
+    if (!user.fullname) return '?';
+    if (typeof user.fullname !== 'string') return '?';
+    if (user.fullname.length === 0) return '?';
+    return user.fullname[0].toUpperCase();
+  };
+
+  // ✅ GET USER NAME - AN TOÀN 100%
+  const getDisplayName = () => {
+    if (!user) return 'User';
+    if (!user.fullname) return 'User';
+    return user.fullname;
+  };
+
+  // ✅ GET USER ROLE - AN TOÀN 100%
+  const getDisplayRole = () => {
+    if (!user) return 'customer';
+    if (!user.role) return 'customer';
+    return user.role;
+  };
+
   return (
     <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white/95 backdrop-blur-md shadow-lg py-2' : 'bg-white py-3'
@@ -62,7 +77,6 @@ const Header = () => {
       <div className="container mx-auto px-4 md:px-10">
         <nav className="flex items-center justify-between">
           
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <i className="fas fa-book-open text-2xl text-[#0d9488]"></i>
             <h1 className="text-2xl font-extrabold text-[#0d9488] tracking-tighter font-quicksand m-0 leading-none">
@@ -70,7 +84,6 @@ const Header = () => {
             </h1>
           </Link>
 
-          {/* Desktop Menu */}
           <div className="hidden xl:flex items-center space-x-1">
             <Link href="/" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/')}`}>
               Trang Chủ
@@ -91,13 +104,12 @@ const Header = () => {
             </Link>
 
             {isAuthenticated && (
-              <Link href="/account" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/tai-khoan')}`}>
+              <Link href="/account" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/account')}`}>
                 Tài khoản
               </Link>
             )}
 
-            {/* Admin Dashboard Link */}
-            {isAuthenticated && user?.role === 'admin' && (
+            {isAuthenticated && getDisplayRole() === 'admin' && (
               <Link href="/dashboard" className={`px-4 py-2 rounded-full font-semibold transition-all ${isActive('/dashboard')}`}>
                 <i className="fas fa-cog mr-2"></i>
                 Quản trị
@@ -105,11 +117,9 @@ const Header = () => {
             )}
           </div>
 
-          {/* Right Actions */}
           <div className="flex items-center space-x-4">
             {isAuthenticated && user ? (
               <div className="flex items-center gap-4">
-                {/* Notification */}
                 <Link href="/home/notification" className="relative group p-2">
                   <i className="fas fa-bell text-xl text-[#0d9488] group-hover:animate-bounce"></i>
                   {notificationCount > 0 && (
@@ -121,13 +131,15 @@ const Header = () => {
 
                 <div className="hidden md:flex items-center gap-2">
                   <div className="w-8 h-8 bg-[#0d9488] rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    {user.fullname.charAt(0).toUpperCase()}
+                    {getInitial()}
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-[#0d9488] text-sm font-quicksand leading-none">
-                      {user.fullname}
+                      {getDisplayName()}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                    <p className="text-xs text-gray-500 capitalize">
+                      {getDisplayRole()}
+                    </p>
                   </div>
                 </div>
 

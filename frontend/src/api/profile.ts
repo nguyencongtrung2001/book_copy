@@ -49,28 +49,24 @@ export async function getCurrentProfile(): Promise<UserProfile> {
 
 /**
  * Cập nhật thông tin profile
- * Backend expects form data or query params, not JSON body
+ * ✅ FIX: Gửi dữ liệu qua JSON body thay vì query params
  */
 export async function updateProfile(data: ProfileUpdateData): Promise<UserProfile> {
-  // Build query params
-  const params = new URLSearchParams();
-  if (data.full_name !== undefined) params.append('full_name', data.full_name);
-  if (data.phone !== undefined) params.append('phone', data.phone || '');
-  if (data.address !== undefined) params.append('address', data.address || '');
+  console.log("📤 Sending update with JSON body:", data);
 
-  console.log("📤 Sending update with params:", params.toString());
-
-  const response = await fetch(`${API_BASE_URL}/api/users/me?${params.toString()}`, {
+  const response = await fetch(`${API_BASE_URL}/api/users/me`, {
     method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${getAuthToken()}`,
-    },
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data), // ✅ Gửi qua body
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    console.error("❌ Update error:", errorData);
     throw new Error(errorData.detail || 'Cập nhật thất bại');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log("✅ Update success:", result);
+  return result;
 }
