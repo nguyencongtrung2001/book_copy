@@ -1,16 +1,23 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
 
 class ReviewBase(BaseModel):
-    rating: int = Field(..., ge=1, le=5)
-    comment: Optional[str] = None
+    rating: int = Field(..., ge=1, le=5, description="Điểm đánh giá từ 1-5 sao")
+    comment: Optional[str] = Field(None, max_length=1000, description="Nội dung đánh giá")
 
 
 class ReviewCreate(ReviewBase):
     book_id: str
-    user_id: str
+    # user_id sẽ được lấy từ current_user trong dependency
+
+
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReviewResponse(ReviewBase):
@@ -20,10 +27,12 @@ class ReviewResponse(ReviewBase):
     user_fullname: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookRatingSummary(BaseModel):
-    average_rating: float
-    total_reviews: int
+    average_rating: float = Field(..., description="Điểm trung bình")
+    total_reviews: int = Field(..., description="Tổng số đánh giá")
+    rating_distribution: dict = Field(..., description="Phân bố đánh giá theo sao")
+    
+    model_config = ConfigDict(from_attributes=True)

@@ -7,7 +7,6 @@ import { useParams, useRouter } from "next/navigation";
 import {
   User,
   Book,
-  Star,
   Minus,
   Plus,
   ShoppingCart,
@@ -23,6 +22,8 @@ import {
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Layout/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import ReviewSection from '@/components/book/ReviewSection';
+
 import {
   fetchBookDetail,
   fetchBookList,
@@ -137,64 +138,44 @@ const BookDetailPage = () => {
     }
   };
 
- const handleOrderNow = async () => {
-  if (!book || book.stock_quantity === 0) return;
+  const handleOrderNow = async () => {
+    if (!book || book.stock_quantity === 0) return;
 
-  // ✅ Kiểm tra authentication
-  if (!isAuthenticated || !user) {
-    alert("Vui lòng đăng nhập để đặt hàng");
-    router.push('/login');
-    return;
-  }
+    if (!isAuthenticated || !user) {
+      alert("Vui lòng đăng nhập để đặt hàng");
+      router.push('/login');
+      return;
+    }
 
-  // ✅ Validate địa chỉ
-  if (!shippingAddress.trim()) {
-    setOrderError("Vui lòng nhập địa chỉ giao hàng");
-    return;
-  }
+    if (!shippingAddress.trim()) {
+      setOrderError("Vui lòng nhập địa chỉ giao hàng");
+      return;
+    }
 
-  setIsSubmitting(true);
-  setOrderError("");
+    setIsSubmitting(true);
+    setOrderError("");
 
-  try {
-    // ✅ FIX: Không cần gửi user_id, backend tự lấy từ token
-    const orderData: OrderCreate = {
-      shipping_address: shippingAddress,
-      payment_method_id: paymentMethod,
-      voucher_code: couponCode || undefined,
-      items: [{
-        book_id: book.book_id,
-        quantity: quantity
-      }]
-      // ❌ KHÔNG GỬI: user_id (backend tự động lấy từ current_user)
-    };
+    try {
+      const orderData: OrderCreate = {
+        shipping_address: shippingAddress,
+        payment_method_id: paymentMethod,
+        voucher_code: couponCode || undefined,
+        items: [{
+          book_id: book.book_id,
+          quantity: quantity
+        }]
+      };
 
-    console.log("📦 Sending order:", orderData);
-    
-    const result = await createOrder(orderData);
-    
-    console.log("✅ Order created:", result);
-    
-    // Hiển thị modal thành công
-    setShowModal(true);
-    
-  } catch (err) {
-    console.error("❌ Order error:", err);
-    setOrderError(err instanceof Error ? err.message : "Đặt hàng thất bại");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-useEffect(() => {
-  console.log("🔐 Auth state:", {
-    isAuthenticated,
-    user: user ? {
-      id: user.id,
-      fullname: user.fullname,
-      role: user.role
-    } : null
-  });
-}, [isAuthenticated, user]);
+      await createOrder(orderData);
+      setShowModal(true);
+    } catch (err) {
+      console.error("❌ Order error:", err);
+      setOrderError(err instanceof Error ? err.message : "Đặt hàng thất bại");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     router.push('/account');
@@ -255,6 +236,7 @@ useEffect(() => {
             <span className="text-[#0F9D58] font-semibold">Chi tiết sách</span>
           </nav>
 
+          {/* Book Detail Section */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-xl">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-10">
 
@@ -313,15 +295,6 @@ useEffect(() => {
                       value={book.category_name} 
                     />
                   )}
-                </div>
-
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={18} fill="currentColor" />
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-600">(Chưa có đánh giá)</span>
                 </div>
 
                 <div className="mb-6">
@@ -485,8 +458,12 @@ useEffect(() => {
             </div>
           </div>
 
+          {/* Review Section - Placed inside container */}
+          <ReviewSection bookId={id} />
+
+          {/* Related Books */}
           {relatedBooks.length > 0 && (
-            <div className="mt-20">
+            <div className="mt-12">
               <h2 className="text-2xl md:text-3xl font-bold mb-8 flex items-center">
                 <LibraryBig className="text-[#0F9D58] mr-3" size={32} />
                 Sách liên quan
@@ -501,84 +478,61 @@ useEffect(() => {
           )}
         </div>
 
+        {/* Success Modal */}
         {showModal && (
-  <div 
-    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300"
-    onClick={closeModal}
-  >
-    <div 
-      className="bg-white rounded-3xl p-8 text-center max-w-md w-full animate-in zoom-in-95 duration-300 shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Success Icon Animation */}
-      <div className="relative mb-6">
-        <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto animate-bounce-slow">
-          <CheckCircle size={56} className="text-green-500" />
-        </div>
-        {/* Confetti effect */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="confetti-1 absolute w-2 h-2 bg-yellow-400 rounded-full animate-confetti"></div>
-          <div className="confetti-2 absolute w-2 h-2 bg-blue-400 rounded-full animate-confetti"></div>
-          <div className="confetti-3 absolute w-2 h-2 bg-red-400 rounded-full animate-confetti"></div>
-          <div className="confetti-4 absolute w-2 h-2 bg-purple-400 rounded-full animate-confetti"></div>
-        </div>
-      </div>
+          <div 
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={closeModal}
+          >
+            <div 
+              className="bg-white rounded-3xl p-8 text-center max-w-md w-full animate-in zoom-in-95 duration-300 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative mb-6">
+                <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                  <CheckCircle size={56} className="text-green-500" />
+                </div>
+              </div>
 
-      <h3 className="text-2xl font-bold text-gray-800 mb-3">
-        🎉 Đặt hàng thành công!
-      </h3>
-      
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-        <p className="text-sm text-green-800 font-medium">
-          ✓ Đơn hàng của bạn đã được tiếp nhận
-        </p>
-        <p className="text-xs text-green-600 mt-1">
-          Chúng tôi sẽ xử lý và giao hàng trong thời gian sớm nhất
-        </p>
-      </div>
+              <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                🎉 Đặt hàng thành công!
+              </h3>
+              
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-green-800 font-medium">
+                  ✓ Đơn hàng của bạn đã được tiếp nhận
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  Chúng tôi sẽ xử lý và giao hàng trong thời gian sớm nhất
+                </p>
+              </div>
 
-      <p className="text-gray-600 mb-6 text-sm">
-        Bạn có thể theo dõi đơn hàng tại mục <strong className="text-[#0F9D58]">&quot;Đơn hàng của tôi&quot;</strong>
-      </p>
+              <p className="text-gray-600 mb-6 text-sm">
+                Bạn có thể theo dõi đơn hàng tại mục <strong className="text-[#0F9D58]">&quot;Đơn hàng của tôi&quot;</strong>
+              </p>
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
-        >
-          Về trang chủ
-        </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push('/')}
+                  className="flex-1 bg-gray-100 text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition-all"
+                >
+                  Về trang chủ
+                </button>
 
-        <button
-          type="button"
-          onClick={closeModal}
-          className="flex-1 bg-[#0F9D58] text-white px-6 py-3 rounded-full font-bold hover:bg-[#0B8043] transition-all shadow-lg"
-        >
-          Xem đơn hàng
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 bg-[#0F9D58] text-white px-6 py-3 rounded-full font-bold hover:bg-[#0B8043] transition-all shadow-lg"
+                >
+                  Xem đơn hàng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <Footer />
-
-      <style jsx>{`
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        .animate-scale-in {
-          animation: scale-in 0.2s ease-out;
-        }
-      `}</style>
     </>
   );
 };
