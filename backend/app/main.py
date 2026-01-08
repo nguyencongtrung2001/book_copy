@@ -48,7 +48,6 @@ app.include_router(user_admin_router, prefix="/api")  # ← THÊM DÒNG NÀY
 app.include_router(order_router, prefix="/api")
 app.include_router(review_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
-
 @app.get("/", tags=["Root"])
 def root():
     return {

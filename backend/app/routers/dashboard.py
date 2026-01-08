@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, extract, and_
+from sqlalchemy import select, func, and_
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
 
 from app.core.database import get_db
 from app.core.dependencies import require_admin
@@ -34,38 +33,43 @@ async def get_dashboard_stats(
         # Tổng số đơn hàng
         total_orders = db.execute(select(func.count()).select_from(Order)).scalar()
         
-        # Tổng doanh thu
+        # Tổng doanh thu (chỉ đơn hoàn thành)
         total_revenue = db.execute(
-            select(func.sum(Order.total_amount))
+            select(func.coalesce(func.sum(Order.total_amount), 0))
             .select_from(Order)
             .join(OrderStatus)
             .where(OrderStatus.status_name == 'completed')
-        ).scalar() or 0
+        ).scalar()
         
         # Tổng số sách
         total_books = db.execute(select(func.count()).select_from(Book)).scalar()
-        total_stock = db.execute(select(func.sum(Book.stock_quantity)).select_from(Book)).scalar() or 0
-        total_sold = db.execute(select(func.sum(Book.sold_quantity)).select_from(Book)).scalar() or 0
+        total_stock = db.execute(
+            select(func.coalesce(func.sum(Book.stock_quantity), 0)).select_from(Book)
+        ).scalar()
+        total_sold = db.execute(
+            select(func.coalesce(func.sum(Book.sold_quantity), 0)).select_from(Book)
+        ).scalar()
         
         return {
             "users": {
-                "total": total_users,
-                "customers": total_customers,
-                "admins": total_admins
+                "total": total_users or 0,
+                "customers": total_customers or 0,
+                "admins": total_admins or 0
             },
             "orders": {
-                "total": total_orders
+                "total": total_orders or 0
             },
             "revenue": {
-                "total": float(total_revenue)
+                "total": float(total_revenue or 0)
             },
             "books": {
-                "total": total_books,
-                "stock": total_stock,
-                "sold": total_sold
+                "total": total_books or 0,
+                "stock": total_stock or 0,
+                "sold": total_sold or 0
             }
         }
     except Exception as e:
+        print(f"❌ Error in get_dashboard_stats: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi lấy thống kê: {str(e)}"
@@ -80,7 +84,6 @@ async def get_order_status_stats(
     """Lấy thống kê đơn hàng theo trạng thái"""
     
     try:
-        # Lấy tất cả trạng thái
         status_list = ['processing', 'confirmed', 'shipping', 'completed', 'cancelled']
         
         result = {}
@@ -95,19 +98,20 @@ async def get_order_status_stats(
             
             # Tính tổng tiền
             total = db.execute(
-                select(func.sum(Order.total_amount))
+                select(func.coalesce(func.sum(Order.total_amount), 0))
                 .select_from(Order)
                 .join(OrderStatus)
                 .where(OrderStatus.status_name == status_name)
-            ).scalar() or 0
+            ).scalar()
             
             result[status_name] = {
                 "count": count,
-                "amount": float(total)
+                "amount": float(total or 0)
             }
         
         return result
     except Exception as e:
+        print(f"❌ Error in get_order_status_stats: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi lấy thống kê trạng thái: {str(e)}"
@@ -116,39 +120,31 @@ async def get_order_status_stats(
 
 @router.get("/monthly-trends")
 async def get_monthly_trends(
-    months: int = 6,
+    months: int = 5,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_admin)
 ):
-    """Lấy xu hướng theo tháng (6 tháng gần nhất)"""
+    """Lấy xu hướng theo tháng"""
     
     try:
-        # Tính ngày bắt đầu (6 tháng trước)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30 * months)
-        
-        # Lấy danh sách tháng
         month_labels = []
-        current = start_date
-        while current <= end_date:
-            month_labels.append(current.strftime('%m/%Y'))
-            # Chuyển sang tháng tiếp theo
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-        
-        # Lấy dữ liệu đơn hàng theo tháng
         delivered = []
         cancelled = []
         revenue = []
         
-        for i in range(len(month_labels)):
-            month_start = start_date.replace(day=1) + timedelta(days=30 * i)
+        # Lấy dữ liệu cho N tháng gần nhất
+        for i in range(months, 0, -1):
+            # Tính tháng
+            target_date = datetime.now() - timedelta(days=30 * i)
+            month_label = target_date.strftime('T%m')
+            month_labels.append(month_label)
+            
+            # Tính khoảng thời gian của tháng
+            month_start = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if month_start.month == 12:
-                month_end = month_start.replace(year=month_start.year + 1, month=1, day=1)
+                month_end = month_start.replace(year=month_start.year + 1, month=1)
             else:
-                month_end = month_start.replace(month=month_start.month + 1, day=1)
+                month_end = month_start.replace(month=month_start.month + 1)
             
             # Đơn đã giao
             delivered_count = db.execute(
@@ -182,7 +178,7 @@ async def get_monthly_trends(
             
             # Doanh thu (chỉ đơn hoàn thành)
             month_revenue = db.execute(
-                select(func.sum(Order.total_amount))
+                select(func.coalesce(func.sum(Order.total_amount), 0))
                 .select_from(Order)
                 .join(OrderStatus)
                 .where(
@@ -192,8 +188,8 @@ async def get_monthly_trends(
                         Order.created_at < month_end
                     )
                 )
-            ).scalar() or 0
-            revenue.append(float(month_revenue))
+            ).scalar()
+            revenue.append(float(month_revenue or 0))
         
         return {
             "months": month_labels,
@@ -202,6 +198,7 @@ async def get_monthly_trends(
             "revenue": revenue
         }
     except Exception as e:
+        print(f"❌ Error in get_monthly_trends: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Lỗi lấy xu hướng tháng: {str(e)}"

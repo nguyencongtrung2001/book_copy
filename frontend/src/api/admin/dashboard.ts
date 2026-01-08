@@ -34,13 +34,11 @@ export interface MonthlyTrends {
   revenue: number[];
 }
 
-// Helper để lấy token
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('access_token');
 }
 
-// Helper để tạo headers với auth
 function getAuthHeaders(): HeadersInit {
   const token = getAuthToken();
   return {
@@ -49,9 +47,6 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-/**
- * Lấy thống kê tổng quan
- */
 export async function fetchDashboardStats(): Promise<DashboardStats> {
   const response = await fetch(`${API_BASE_URL}/api/dashboard/stats`, {
     method: 'GET',
@@ -66,9 +61,6 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   return response.json();
 }
 
-/**
- * Lấy thống kê theo trạng thái đơn hàng
- */
 export async function fetchOrderStatusStats(): Promise<OrderStatusStats> {
   const response = await fetch(`${API_BASE_URL}/api/dashboard/order-status`, {
     method: 'GET',
@@ -83,10 +75,7 @@ export async function fetchOrderStatusStats(): Promise<OrderStatusStats> {
   return response.json();
 }
 
-/**
- * Lấy xu hướng theo tháng
- */
-export async function fetchMonthlyTrends(months: number = 6): Promise<MonthlyTrends> {
+export async function fetchMonthlyTrends(months: number = 5): Promise<MonthlyTrends> {
   const response = await fetch(
     `${API_BASE_URL}/api/dashboard/monthly-trends?months=${months}`,
     {
