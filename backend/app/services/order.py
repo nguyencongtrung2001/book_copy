@@ -1,4 +1,4 @@
-# backend/app/services/order.py - Thêm function cancel_order
+# backend/app/services/order.py
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -58,6 +58,7 @@ def create_order(db: Session, order_data: OrderCreate):
                 final_total -= subtotal * (Decimal(str(discount.discount_percentage)) / 100)
                 discount_id = discount.discount_id
 
+        # CHANGED: Trạng thái mặc định là 'processing' (Chờ xử lý)
         status_rec = db.execute(select(OrderStatus).where(OrderStatus.status_name == 'processing')).scalar_one()
         new_id = generate_order_id(db)
         
@@ -111,18 +112,20 @@ def get_order_by_id(db: Session, order_id: str):
 
 
 def cancel_order(db: Session, order_id: str, user_id: str):
-    """Hủy đơn hàng"""
+    """
+    Hủy đơn hàng - CHỈ cho phép khi đơn đang ở trạng thái 'processing' (Chờ xử lý)
+    """
     order = get_order_by_id(db, order_id)
     
     # Check permission
     if order.user_id != user_id:
         raise HTTPException(status_code=403, detail="Bạn không có quyền hủy đơn hàng này")
     
-    # Check if order can be cancelled
-    if order.status.status_name not in ['processing', 'confirmed']:
+    # CHANGED: Chỉ cho phép hủy khi đang "Chờ xử lý"
+    if order.status.status_name != 'processing':
         raise HTTPException(
             status_code=400, 
-            detail="Chỉ có thể hủy đơn hàng đang xử lý hoặc đã xác nhận"
+            detail="Chỉ có thể hủy đơn hàng đang chờ xử lý"
         )
     
     # Update status to cancelled
@@ -158,13 +161,32 @@ def cancel_order(db: Session, order_id: str, user_id: str):
 
 
 def update_order_status(db: Session, order_id: str, new_status: str):
-    """Cập nhật trạng thái đơn hàng (Admin)"""
+    """
+    Cập nhật trạng thái đơn hàng (Admin)
+    Flow: processing -> confirmed -> shipping -> completed
+    """
     order = get_order_by_id(db, order_id)
     
-    # Validate status
-    valid_statuses = ['processing', 'confirmed', 'shipping', 'completed', 'cancelled']
-    if new_status not in valid_statuses:
-        raise HTTPException(status_code=400, detail=f"Trạng thái không hợp lệ: {new_status}")
+    # Validate status transitions
+    current_status = order.status.status_name if order.status else None
+    
+    # CHANGED: Logic chuyển trạng thái mới
+    valid_transitions = {
+        'processing': ['confirmed', 'cancelled'],  # Chờ xử lý -> Đang xử lý hoặc Hủy
+        'confirmed': ['shipping'],                  # Đang xử lý -> Đang giao
+        'shipping': ['completed'],                  # Đang giao -> Đã giao (do user xác nhận)
+        'completed': [],                            # Đã giao -> không chuyển được
+        'cancelled': []                             # Đã hủy -> không chuyển được
+    }
+    
+    if current_status not in valid_transitions:
+        raise HTTPException(status_code=400, detail=f"Trạng thái hiện tại không hợp lệ")
+    
+    if new_status not in valid_transitions[current_status]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Không thể chuyển từ '{current_status}' sang '{new_status}'"
+        )
     
     status_obj = db.execute(
         select(OrderStatus).where(OrderStatus.status_name == new_status)
@@ -173,7 +195,7 @@ def update_order_status(db: Session, order_id: str, new_status: str):
     if not status_obj:
         raise HTTPException(status_code=404, detail="Không tìm thấy trạng thái")
     
-    old_status = order.status.status_name if order.status else "N/A"
+    old_status = current_status
     order.status_id = status_obj.status_id
     
     db.commit()
@@ -186,5 +208,35 @@ def update_order_status(db: Session, order_id: str, new_status: str):
             send_order_status_update_email(user.email, user.full_name, order_id, old_status, new_status)
         except Exception as e:
             logger.error(f"Lỗi gửi mail: {e}")
+    
+    return order
+
+
+def confirm_delivery(db: Session, order_id: str, user_id: str):
+    """
+    User xác nhận đã nhận hàng - Chuyển từ 'shipping' -> 'completed'
+    """
+    order = get_order_by_id(db, order_id)
+    
+    # Check permission
+    if order.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Bạn không có quyền xác nhận đơn hàng này")
+    
+    # CHANGED: Chỉ cho phép xác nhận khi đang "Đang giao"
+    if order.status.status_name != 'shipping':
+        raise HTTPException(
+            status_code=400, 
+            detail="Chỉ có thể xác nhận đơn hàng đang giao"
+        )
+    
+    # Update to completed
+    completed_status = db.execute(
+        select(OrderStatus).where(OrderStatus.status_name == 'completed')
+    ).scalar_one()
+    
+    order.status_id = completed_status.status_id
+    
+    db.commit()
+    db.refresh(order)
     
     return order

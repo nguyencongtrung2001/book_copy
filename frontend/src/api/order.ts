@@ -95,8 +95,6 @@ export async function createOrder(orderData: OrderCreate): Promise<OrderResponse
 /**
  * Lấy lịch sử đơn hàng của user hiện tại
  */
-// frontend/src/api/order.ts - Sửa getMyOrders function
-
 export async function getMyOrders(
   skip: number = 0,
   limit: number = 20,
@@ -109,25 +107,18 @@ export async function getMyOrders(
 
   const url = `${API_BASE_URL}/api/orders/my-orders?${params.toString()}`;
 
-  console.log("🔍 Fetching orders from:", url);
-  console.log("🔑 Token:", getAuthToken() ? "✅ Present" : "❌ Missing");
-
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: getAuthHeaders(),
     });
 
-    console.log("📡 Response status:", response.status);
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("❌ Error response:", errorData);
       throw new Error(errorData.detail || 'Lấy danh sách đơn hàng thất bại');
     }
 
     const data = await response.json();
-    console.log("✅ Orders data:", data);
     return data;
   } catch (error) {
     console.error("❌ Fetch error:", error);
@@ -153,7 +144,7 @@ export async function getOrderDetail(orderId: string): Promise<OrderResponse> {
 }
 
 /**
- * Hủy đơn hàng
+ * Hủy đơn hàng - CHỈ khi đơn đang Chờ xử lý
  */
 export async function cancelOrder(orderId: string): Promise<{ message: string; order_id: string; order_status: string }> {
   const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/cancel`, {
@@ -164,6 +155,23 @@ export async function cancelOrder(orderId: string): Promise<{ message: string; o
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.detail || 'Hủy đơn hàng thất bại');
+  }
+
+  return response.json();
+}
+
+/**
+ * NEW: User xác nhận đã nhận hàng
+ */
+export async function confirmDelivery(orderId: string): Promise<{ message: string; order_id: string; order_status: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/confirm-delivery`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Xác nhận nhận hàng thất bại');
   }
 
   return response.json();
@@ -187,6 +195,34 @@ export async function updateOrderStatus(
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.detail || 'Cập nhật trạng thái thất bại');
+  }
+
+  return response.json();
+}
+
+/**
+ * Admin: Lấy tất cả đơn hàng
+ */
+export async function getAllOrdersAdmin(
+  skip: number = 0,
+  limit: number = 20,
+  statusFilter?: string
+): Promise<{ total: number; orders: any[] }> {
+  const params = new URLSearchParams();
+  params.append('skip', skip.toString());
+  params.append('limit', limit.toString());
+  if (statusFilter) params.append('status_filter', statusFilter);
+
+  const url = `${API_BASE_URL}/api/orders/admin/all?${params.toString()}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || 'Lấy danh sách đơn hàng thất bại');
   }
 
   return response.json();

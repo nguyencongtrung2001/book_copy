@@ -1,3 +1,4 @@
+// frontend/src/app/(user)/account/page.tsx - UPDATED ORDER SECTION
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -17,10 +18,11 @@ import {
   Calendar,
   CreditCard,
   MapPin,
-  CheckCircle
+  CheckCircle,
+  Check
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMyOrders, cancelOrder, OrderResponse } from "@/api/order";
+import { getMyOrders, cancelOrder, confirmDelivery, OrderResponse } from "@/api/order";
 import { updateProfile, ProfileUpdateData } from "@/api/profile";
 
 export default function UserProfilePage() {
@@ -74,7 +76,6 @@ export default function UserProfilePage() {
     }
   }, [statusFilter]);
 
-  // Load orders on mount and when filter changes
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
@@ -85,46 +86,29 @@ export default function UserProfilePage() {
     setUpdateSuccess(false);
 
     try {
-      // Chuẩn bị dữ liệu cập nhật
       const updateData: ProfileUpdateData = {};
       
-      // Normalize để so sánh: null/undefined/"" -> ""
       const normalizeValue = (val: string | null | undefined) => val?.trim() || "";
       
-      // So sánh họ tên
       if (normalizeValue(userForm.hoTen) !== normalizeValue(user?.fullname)) {
         updateData.full_name = userForm.hoTen.trim();
       }
       
-      // So sánh phone
       if (normalizeValue(userForm.soDienThoai) !== normalizeValue(user?.phone)) {
         updateData.phone = userForm.soDienThoai.trim() || undefined;
       }
       
-      // So sánh address
       if (normalizeValue(userForm.diaChi) !== normalizeValue(user?.address)) {
         updateData.address = userForm.diaChi.trim() || undefined;
       }
 
-      console.log("📤 Update data:", updateData);
-      console.log("👤 Current user:", { 
-        fullname: user?.fullname, 
-        phone: user?.phone, 
-        address: user?.address 
-      });
-
-      // Kiểm tra có thay đổi không
       if (Object.keys(updateData).length === 0) {
         setError("Không có thay đổi nào để cập nhật");
         setLoading(false);
         return;
       }
 
-      // Gọi API
-      const updated = await updateProfile(updateData);
-      console.log("✅ Updated profile:", updated);
-      
-      // Refresh user context
+      await updateProfile(updateData);
       await refreshUser();
       
       setUpdateSuccess(true);
@@ -153,19 +137,32 @@ export default function UserProfilePage() {
     }
   };
 
+  // NEW: Xác nhận đã nhận hàng
+  const handleConfirmDelivery = async (orderId: string) => {
+    if (!confirm('Xác nhận bạn đã nhận được hàng?')) return;
+
+    try {
+      await confirmDelivery(orderId);
+      alert("Xác nhận nhận hàng thành công!");
+      loadOrders();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Xác nhận thất bại");
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       processing: "bg-amber-50 text-amber-700 border-amber-200",
       confirmed: "bg-blue-50 text-blue-700 border-blue-200",
-      shipping: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      shipping: "bg-purple-50 text-purple-700 border-purple-200",
       completed: "bg-teal-50 text-teal-700 border-teal-200",
       cancelled: "bg-red-50 text-red-700 border-red-200",
     };
     const labels: Record<string, string> = {
-      processing: "Chờ xác nhận",
-      confirmed: "Đã xác nhận",
+      processing: "Chờ xử lý",
+      confirmed: "Đang xử lý",
       shipping: "Đang giao",
-      completed: "Hoàn thành",
+      completed: "Đã giao",
       cancelled: "Đã hủy",
     };
     return (
@@ -179,6 +176,40 @@ export default function UserProfilePage() {
     if (!image) return "/books/default-book.png";
     if (image.startsWith("http")) return image;
     return `/books/${image}`;
+  };
+
+  // NEW: Render action buttons based on status
+  const renderOrderActions = (order: OrderResponse) => {
+    const { order_id, order_status } = order;
+
+    // Chờ xử lý -> Có thể hủy
+    if (order_status === 'processing') {
+      return (
+        <button 
+          onClick={() => { setSelectedOrder(order); setActiveModal("cancel"); }}
+          className="w-9 h-9 rounded-full flex items-center justify-center text-red-600 border border-red-100 hover:bg-red-600 hover:text-white transition-all"
+          title="Hủy đơn"
+        >
+          <X size={16} />
+        </button>
+      );
+    }
+
+    // Đang giao -> Nút "Đã nhận hàng"
+    if (order_status === 'shipping') {
+      return (
+        <button 
+          onClick={() => handleConfirmDelivery(order_id)}
+          className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-full text-xs font-bold hover:bg-green-600 transition-all"
+          title="Xác nhận đã nhận hàng"
+        >
+          <Check size={14} /> Đã nhận hàng
+        </button>
+      );
+    }
+
+    // Đang xử lý, Đã giao, Đã hủy -> Không có action
+    return null;
   };
 
   return (
@@ -209,7 +240,6 @@ export default function UserProfilePage() {
                 <IdCard size={20} /> Thông tin cá nhân
               </h2>
 
-              {/* Success Message */}
               {updateSuccess && (
                 <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm">
                   <CheckCircle size={16} />
@@ -217,7 +247,6 @@ export default function UserProfilePage() {
                 </div>
               )}
 
-              {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
                   {error}
@@ -227,7 +256,6 @@ export default function UserProfilePage() {
               <div className="space-y-4">
                 <InputGroup label="Họ tên" value={userForm.hoTen} onChange={(v) => setUserForm({...userForm, hoTen: v})} />
                 
-                {/* Email (readonly) */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider ml-1">Email (không thể sửa)</label>
                   <input 
@@ -267,10 +295,10 @@ export default function UserProfilePage() {
                   className="px-4 py-2 border border-slate-200 rounded-lg text-sm focus:border-emerald-500 outline-none"
                 >
                   <option value="">Tất cả</option>
-                  <option value="processing">Chờ xác nhận</option>
-                  <option value="confirmed">Đã xác nhận</option>
+                  <option value="processing">Chờ xử lý</option>
+                  <option value="confirmed">Đang xử lý</option>
                   <option value="shipping">Đang giao</option>
-                  <option value="completed">Hoàn thành</option>
+                  <option value="completed">Đã giao</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
@@ -310,14 +338,7 @@ export default function UserProfilePage() {
                             </button>
                           </td>
                           <td className="px-4 py-4 text-end pr-6">
-                            {(order.order_status === "processing" || order.order_status === "confirmed") && (
-                              <button 
-                                onClick={() => { setSelectedOrder(order); setActiveModal("cancel"); }}
-                                className="w-9 h-9 rounded-full flex items-center justify-center text-red-600 border border-red-100 hover:bg-red-600 hover:text-white transition-all"
-                              >
-                                <X size={16} />
-                              </button>
-                            )}
+                            {renderOrderActions(order)}
                           </td>
                         </tr>
                       )) : (
@@ -341,7 +362,6 @@ export default function UserProfilePage() {
       {activeModal === "detail" && selectedOrder && (
         <Modal title={`Chi tiết: ${selectedOrder.order_id}`} onClose={() => setActiveModal(null)}>
           <div className="space-y-4">
-            {/* Order Info */}
             <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -364,7 +384,6 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* Order Items */}
             <div className="max-h-96 overflow-y-auto px-2">
               {selectedOrder.order_details?.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-4 py-3 border-b border-slate-50 last:border-0">
@@ -386,7 +405,6 @@ export default function UserProfilePage() {
               )) || []}
             </div>
 
-            {/* Total */}
             <div className="border-t pt-4 flex justify-between items-center">
               <span className="font-bold text-gray-700">Tổng cộng:</span>
               <span className="text-2xl font-black text-emerald-600">{selectedOrder.total_amount.toLocaleString()}đ</span>
@@ -428,7 +446,7 @@ export default function UserProfilePage() {
   );
 }
 
-// --- Helper Components ---
+// Helper Components
 const InputGroup = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
   <div className="flex flex-col gap-1.5">
     <label className="text-[11px] font-black uppercase text-slate-400 tracking-wider ml-1">{label}</label>
