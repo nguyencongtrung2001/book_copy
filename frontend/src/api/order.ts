@@ -45,6 +45,27 @@ export interface UserOrderHistoryResponse {
   orders: OrderResponse[];
 }
 
+// ✅ FIX: Thay thế any bằng kiểu dữ liệu cụ thể
+export interface AdminOrderSummary {
+  order_id: string;
+  user_id: string;
+  user_name: string;
+  total_amount: number;
+  order_status: string;
+  created_at: string;
+}
+
+export interface AdminOrderListResponse {
+  total: number;
+  orders: AdminOrderSummary[];
+}
+
+export interface OrderStatusUpdateResponse {
+  message: string;
+  order_id: string;
+  new_status: string;
+}
+
 // Helper để lấy token
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -84,7 +105,7 @@ export async function createOrder(orderData: OrderCreate): Promise<OrderResponse
       );
     }
 
-    return responseData;
+    return responseData as OrderResponse;
     
   } catch (error) {
     console.error("❌ FETCH ERROR:", error);
@@ -119,7 +140,7 @@ export async function getMyOrders(
     }
 
     const data = await response.json();
-    return data;
+    return data as UserOrderHistoryResponse;
   } catch (error) {
     console.error("❌ Fetch error:", error);
     throw error;
@@ -140,13 +161,13 @@ export async function getOrderDetail(orderId: string): Promise<OrderResponse> {
     throw new Error(errorData.detail || 'Lấy chi tiết đơn hàng thất bại');
   }
 
-  return response.json();
+  return response.json() as Promise<OrderResponse>;
 }
 
 /**
  * Hủy đơn hàng - CHỈ khi đơn đang Chờ xử lý
  */
-export async function cancelOrder(orderId: string): Promise<{ message: string; order_id: string; order_status: string }> {
+export async function cancelOrder(orderId: string): Promise<OrderStatusUpdateResponse> {
   const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/cancel`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -157,13 +178,13 @@ export async function cancelOrder(orderId: string): Promise<{ message: string; o
     throw new Error(errorData.detail || 'Hủy đơn hàng thất bại');
   }
 
-  return response.json();
+  return response.json() as Promise<OrderStatusUpdateResponse>;
 }
 
 /**
- * NEW: User xác nhận đã nhận hàng
+ * User xác nhận đã nhận hàng
  */
-export async function confirmDelivery(orderId: string): Promise<{ message: string; order_id: string; order_status: string }> {
+export async function confirmDelivery(orderId: string): Promise<OrderStatusUpdateResponse> {
   const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/confirm-delivery`, {
     method: 'PUT',
     headers: getAuthHeaders(),
@@ -174,7 +195,7 @@ export async function confirmDelivery(orderId: string): Promise<{ message: strin
     throw new Error(errorData.detail || 'Xác nhận nhận hàng thất bại');
   }
 
-  return response.json();
+  return response.json() as Promise<OrderStatusUpdateResponse>;
 }
 
 /**
@@ -183,7 +204,7 @@ export async function confirmDelivery(orderId: string): Promise<{ message: strin
 export async function updateOrderStatus(
   orderId: string,
   newStatus: string
-): Promise<{ message: string; order_id: string; new_status: string }> {
+): Promise<OrderStatusUpdateResponse> {
   const response = await fetch(
     `${API_BASE_URL}/api/orders/admin/${orderId}/status?new_status=${newStatus}`,
     {
@@ -197,7 +218,7 @@ export async function updateOrderStatus(
     throw new Error(errorData.detail || 'Cập nhật trạng thái thất bại');
   }
 
-  return response.json();
+  return response.json() as Promise<OrderStatusUpdateResponse>;
 }
 
 /**
@@ -207,7 +228,7 @@ export async function getAllOrdersAdmin(
   skip: number = 0,
   limit: number = 20,
   statusFilter?: string
-): Promise<{ total: number; orders: any[] }> {
+): Promise<AdminOrderListResponse> {
   const params = new URLSearchParams();
   params.append('skip', skip.toString());
   params.append('limit', limit.toString());
@@ -225,5 +246,5 @@ export async function getAllOrdersAdmin(
     throw new Error(errorData.detail || 'Lấy danh sách đơn hàng thất bại');
   }
 
-  return response.json();
+  return response.json() as Promise<AdminOrderListResponse>;
 }
